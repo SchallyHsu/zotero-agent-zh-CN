@@ -1,0 +1,32 @@
+{
+  "name": "zotero-agent-zh-cn-unofficial",
+  "private": true,
+  "type": "module",
+  "description": "Unofficial Simplified Chinese localization of 54yyyu/zotero-mcp Agent v0.15.2",
+  "license": "AGPL-3.0-or-later",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run typecheck && npm run preview && npm run test:ui",
+    "test:upstream": "node scripts/test-unit.mjs",
+    "test:zotero": "node scripts/test-zotero.mjs",
+    "dev": "node scripts/dev.mjs",
+    "preview": "node scripts/preview.mjs",
+    "test:ui": "node scripts/verify-ui.cjs",
+    "test:performance": "node scripts/benchmark-localization.cjs"
+  },
+  "devDependencies": {
+    "@types/katex": "^0.16.8",
+    "@types/node": "^26.6.4",
+    "esbuild": "^0.28.2",
+    "playwright": "1.62.1",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "katex": "^0.19.0",
+    "marked": "^18.0.14"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Zotero Agent 简体中文（非官方）",
+  "id": "chat@zotero-mcp",
+  "slug": "zotero-agent",
+  "version": "0.15.2.3",
+  "description": "基于 54yyyu/zotero-mcp v0.15.2 的非官方简体中文衍生版；包含界面汉化和刷新性能优化。",
+  "license": "AGPL-3.0-or-later",
+  "homepage": "https://github.com/SchallyHsu/zotero-agent-zh-CN",
+  "updateUrl": "https://raw.githubusercontent.com/54yyyu/zotero-mcp/main/plugin/updates.json",
+  "minZotero": "7.0"
+}

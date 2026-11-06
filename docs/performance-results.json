@@ -1,0 +1,75 @@
+{
+  "note": "Synthetic local UI benchmark in headless Edge; not a measurement of AI/network latency or Zotero end-to-end responsiveness.",
+  "runs": [
+    {
+      "variant": "before",
+      "run": 0,
+      "calls": 100,
+      "records": 251,
+      "ms": 382.49999999813735,
+      "maxMs": 10,
+      "closest": 1452921
+    },
+    {
+      "variant": "after",
+      "run": 0,
+      "calls": 50,
+      "records": 101,
+      "ms": 4.300000004470348,
+      "maxMs": 0.599999999627471,
+      "closest": 351
+    },
+    {
+      "variant": "before",
+      "run": 1,
+      "calls": 100,
+      "records": 251,
+      "ms": 371.7000000011176,
+      "maxMs": 9.599999999627471,
+      "closest": 1452921
+    },
+    {
+      "variant": "after",
+      "run": 1,
+      "calls": 50,
+      "records": 101,
+      "ms": 3.5999999959021807,
+      "maxMs": 0.5,
+      "closest": 351
+    },
+    {
+      "variant": "before",
+      "run": 2,
+      "calls": 100,
+      "records": 251,
+      "ms": 401.7999999951571,
+      "maxMs": 10,
+      "closest": 1452921
+    },
+    {
+      "variant": "after",
+      "run": 2,
+      "calls": 50,
+      "records": 101,
+      "ms": 3.999999998137355,
+      "maxMs": 0.599999999627471,
+      "closest": 351
+    }
+  ],
+  "median": {
+    "before": {
+      "calls": 100,
+      "records": 251,
+      "ms": 382.49999999813735,
+      "maxMs": 10,
+      "closest": 1452921
+    },
+    "after": {
+      "calls": 50,
+      "records": 101,
+      "ms": 3.999999998137355,
+      "maxMs": 0.599999999627471,
+      "closest": 351
+    }
+  }
+}

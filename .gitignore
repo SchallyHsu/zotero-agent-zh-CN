@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.xpi
+.dev/
+.dev*/
+
+# Generated local verification and credentials
+test-output/
+playwright-report/
+.env*
+*.log
+*.sqlite*
+settings.json
+auth.json
