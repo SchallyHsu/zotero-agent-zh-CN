@@ -1,5 +1,7 @@
 # Zotero Agent 简体中文（非官方）
 
+**简体中文** | [English](README.en.md)
+
 **0.15.2.11** 将“额度与用量”更新为工具栏右侧的环形仪表 + 圆角菱形图标（实时反映剩余额度比例，悬停弹出深色胶囊提示，点击查看各额度窗口剩余百分比、重置时间或余额，以及本轮和本对话的 Token 用量），并在“设置 → 外观”中新增**界面语言（Language）**选项，支持在**中文**与 **English** 之间实时切换。支持 Codex、Claude Code、Antigravity、DeepSeek Harness，并按 pi／dsh 当前模型匹配对应服务商的账号。各后端支持范围和实际验证边界见 [额度与用量说明](docs/account-usage.md)；完整改动见 [更新记录](CHANGELOG.md)。
 
 基于 [54yyyu/zotero-mcp](https://github.com/54yyyu/zotero-mcp) 的 Zotero Agent 插件制作的**非官方简体中文衍生版**。本仓库增加界面汉化、项目与文章对话管理、后端适配和性能优化；原插件的模型接入、文献读取、对话、工具调用等核心功能来自原项目及其贡献者。
