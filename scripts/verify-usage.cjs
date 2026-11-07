@@ -18,9 +18,20 @@ mkdirSync(out, { recursive: true });
     const summary = page.locator('.umeter__summary');
     const open = () => page.locator('.umeter__button').click();
     const contains = async (locator, text) => { await locator.filter({ hasText: text }).waitFor(); };
+    // The summary lives in the hover tooltip, so it is checked while hidden.
+    const says = async (text) => { await summary.filter({ hasText: text }).waitFor({ state: 'attached' }); };
+    const summaryText = async () => (await summary.textContent()) ?? '';
     await page.goto(url + '?backend=codex&speed=0&nohistory=1');
-    await contains(summary, '剩余 73%');
+    await says('剩余 73%');
+    // The compact gauge sits in the toolbar; hover shows the one-line tooltip.
+    assert.equal(await page.locator('.ctools .umeter__button').count(), 1);
+    await page.locator('.umeter__button').hover();
+    await page.locator('.utip').waitFor();
+    assert.equal(await page.locator('.utip').innerText(), '5小时 · 剩余 73%');
+    await page.screenshot({ path: join(out, 'codex-tooltip.png') });
+    checks.push('toolbar gauge with hover tooltip');
     await open();
+    assert(await page.locator('.utip').isHidden());
     await contains(page.locator('.upop'), '剩余 92%');
     assert.equal(await page.locator('.upop').getAttribute('role'), 'dialog');
     await page.waitForTimeout(180);
@@ -33,7 +44,7 @@ mkdirSync(out, { recursive: true });
     await page.evaluate(() => { window.__zmc.host.runtime.accountUsage = async () => { throw Error('offline'); }; });
     await open();
     await page.locator('.upop').getByRole('button', { name: '刷新', exact: true }).click();
-    await contains(summary, '上次数据');
+    await says('上次数据');
     await contains(page.locator('.upop'), '上次成功');
     await page.keyboard.press('Escape');
     await page.evaluate(() => { const s = window.__zmc.sim.statuses.find(s => s.id === 'codex'); if (s) s.available = true; });
@@ -63,12 +74,12 @@ mkdirSync(out, { recursive: true });
     await contains(page.locator('.upop'), 'API 模式');
     await contains(page.locator('.upop'), '$0.0310');
     assert(!(await page.locator('.upop').innerText()).includes('错误旧数据'));
-    assert(!(await summary.innerText()).includes('剩余'));
+    assert(!(await summaryText()).includes('剩余'));
     checks.push('auth-switch race ignored and API estimated cost follows preference');
 
     await page.goto(url + '?backend=codex&theme=dark&speed=0&nohistory=1');
     await page.setViewportSize({ width: 320, height: 740 });
-    await contains(summary, '剩余 73%');
+    await says('剩余 73%');
     await open();
     const geometry = await page.locator('.upop').evaluate(el => {
       const r = el.getBoundingClientRect(), parent = el.closest('.zmc').getBoundingClientRect();
@@ -83,14 +94,14 @@ mkdirSync(out, { recursive: true });
     await page.evaluate(() => { window.__zmc.host.runtime.accountUsage = async () => ({ status: 'available', checkedAt: Date.now(), windows: [{ id: 'expired', label: '5小时', usedPercent: 100, resetsAt: Date.now() - 1000 }] }); });
     await open();
     await page.locator('.upop').getByRole('button', { name: '刷新', exact: true }).click();
-    await contains(summary, '待刷新');
+    await says('待刷新');
     await contains(page.locator('.upop'), '已到重置时间');
-    assert(!(await summary.innerText()).includes('100%'));
+    assert(!(await summaryText()).includes('100%'));
     checks.push('320px dark layout and expired-reset state');
 
     for (const backend of ['claude-code', 'antigravity', 'deepseek-harness']) {
       await page.goto(url + `?backend=${backend}&speed=0&nohistory=1`);
-      await contains(summary, backend === 'deepseek-harness' ? '23.45' : '剩余 73%');
+      await says(backend === 'deepseek-harness' ? '23.45' : '剩余 73%');
       await open();
       await contains(page.locator('.upop'), backend === 'deepseek-harness' ? '赠送余额' : '剩余 92%');
       await page.waitForTimeout(180);
@@ -99,11 +110,12 @@ mkdirSync(out, { recursive: true });
     checks.push('Claude, Antigravity and DeepSeek quota/currency panels');
 
     await page.goto(url + '?backend=pi&speed=0&nohistory=1');
-    await contains(summary, '额度暂不可用');
+    await says('额度暂不可用');
     await open();
     await contains(page.locator('.upop'), '未提供');
     await contains(page.locator('.upop'), '未报告');
-    await page.locator('textarea').click();
+    // The popover sits over the textarea (like the context popover), so click outside the composer instead.
+    await page.mouse.click(12, 12);
     assert.equal(await page.locator('.upop').count(), 0);
 
     // Switching provider/model must clear the old snapshot and discard its late reply.
@@ -120,8 +132,8 @@ mkdirSync(out, { recursive: true });
       sim.setSettingsElsewhere({ model: { ...s.model, pi: 'openai-codex/gpt-5' } });
       window.__oldProvider({ status: 'available', checkedAt: Date.now(), windows: [{ id: 'wrong', label: '过时服务商额度', usedPercent: 99 }] });
     });
-    await contains(summary, '新服务商额度');
-    assert(!(await summary.innerText()).includes('过时服务商'));
+    await says('新服务商额度');
+    assert(!(await summaryText()).includes('过时服务商'));
     checks.push('pi model/provider switch cannot show another account quota');
     await page.evaluate(() => window.__zmc.panel.dispose());
     assert.equal(await page.locator('.umeter').count(), 0);

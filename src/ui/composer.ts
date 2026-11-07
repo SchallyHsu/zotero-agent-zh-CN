@@ -88,7 +88,7 @@ export class Composer {
 
     this.plusBtn = h("button.iconbtn.iconbtn--sm", { type: "button", "aria-label": "Add a source", title: "Add a source (@)", "aria-haspopup": "listbox", onclick: () => this.togglePlus() }, icon("plus")) as HTMLButtonElement;
     this.el = h("div.composer");
-    this.usage = new UsageMeter(opts.accountUsage, () => { this.pickers.close(); this.ring.close(); this.pop.close(); this.slash.close(); });
+    this.usage = new UsageMeter(this.el, opts.accountUsage, () => { this.pickers.close(); this.ring.close(); this.pop.close(); this.slash.close(); });
     this.slash = new SlashMenu(this.el, () => opts.slashItems(), (it) => this.pickSlash(it));
     this.slash.onActive = active;
     this.pickers = new Pickers(this.el, { load: () => opts.loadChoices(), pick: (k, id) => opts.onPick(k, id), switchAgent: (id) => opts.switchAgent(id), hasMessages: () => opts.hasMessages(), checkSetup: () => opts.checkSetup() });
@@ -101,8 +101,8 @@ export class Composer {
       h("button.chip__btn", { type: "button", "aria-label": "Dismiss", title: "Dismiss", onclick: () => { this.noteDismissed = true; this.longNote.hidden = true; } }, icon("close")));
 
     const b = this.pickers.buttons;
-    append(this.el, [this.pop.el, this.longNote, this.usage.el, this.chipsEl, this.ta,
-      h("div.ctools", null, this.plusBtn, b.model, h("span.ctools__fill"), this.ring.el, b.mode, this.sendBtn)]);
+    append(this.el, [this.pop.el, this.longNote, this.chipsEl, this.ta,
+      h("div.ctools", null, this.plusBtn, b.model, h("span.ctools__fill"), this.usage.el, this.ring.el, b.mode, this.sendBtn)]);
     this.wireDrop();
     env.doc.addEventListener("pointerdown", this.outside, true);
     this.syncSend();

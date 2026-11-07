@@ -1,6 +1,6 @@
 # Modification notice / 修改说明
 
-Modification dates: **2026-11-06 – 2026-11-07**. Maintained and published by **SchallyHsu**.
+Modification dates: **2026-11-06 – 2026-11-08**. Maintained and published by **SchallyHsu**.
 Local development update: **2026-11-07**, version **0.15.2.4**: named projects,
 native backend session-title/project synchronization, per-paper history and resume,
 legacy metadata migration, settings, localization and regression checks.
@@ -30,9 +30,13 @@ shutdown timer from the Antigravity helper, resume confirmed App conversations
 through validated local storage, bound stale daemon discovery, and defer redundant
 metadata work until after the reply. Added local latency measurement and native
 XPI fast-resume verification. Model and reasoning preferences are preserved.
+Release update: **2026-11-08**, version **0.15.2.11**: replace the top quota
+text bar with a compact circular gauge + diamond icon in the composer toolbar,
+hover pill tooltip and anchored detail popover; update verification and size budget.
 The 0.15.2.4 through 0.15.2.9 development updates were first distributed together
-in release **0.15.2.9**, source tag **zh-CN-v0.15.2.9**. The current release is
-**0.15.2.10**, source tag **zh-CN-v0.15.2.10**, including the quota update above.
+in release **0.15.2.9**, source tag **zh-CN-v0.15.2.9**. Release **0.15.2.10**
+(**zh-CN-v0.15.2.10**) added the quota display; the current release is
+**0.15.2.11**, source tag **zh-CN-v0.15.2.11**.
 This repository is an **unofficial derivative**, not the original Zotero MCP
 project and not an official Zotero product. Original implementation credit belongs
 to the [Zotero MCP contributors](https://github.com/54yyyu/zotero-mcp/graphs/contributors).

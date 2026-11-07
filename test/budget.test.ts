@@ -12,7 +12,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 // (Raised 2026-10-05 with skills and prompts: panel.js was at 650k, the xpi 203k.)
 // Modified 2026-11-06: the zh-CN dictionary and complete redistribution notices
 // add payload; keep a separate explicit ceiling for this derivative. See NOTICE.md.
-const BUDGET = { "plugin.js": 12_000, "panel.js": 750_000, "zotero-agent.xpi": 260_000 };
+const BUDGET = { "plugin.js": 12_000, "panel.js": 800_000, "zotero-agent.xpi": 300_000 };
 
 test("bundles stay within their size budget", () => {
   execFileSync("node", [join(root, "scripts", "build.mjs")], { cwd: root, stdio: "pipe" });
