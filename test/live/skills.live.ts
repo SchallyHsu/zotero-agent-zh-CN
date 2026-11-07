@@ -15,7 +15,7 @@ import { createNodeSpawner } from "../node-spawner.ts";
 const on = process.env["ZMC_LIVE"] === "1";
 const bridgeDir = process.env["ZMC_BRIDGE_DIR"] ?? join(tmpdir(), "zmc-live-bridges");
 const backends = (process.env["ZMC_LIVE_BACKENDS"] ?? "claude-code,codex,pi").split(",") as BackendId[];
-const SETUP: Record<BackendId, Partial<StartOpts>> = {
+const SETUP: Partial<Record<BackendId, Partial<StartOpts>>> = {
   "claude-code": { model: "haiku", auth: "subscription" },
   codex: { model: "gpt-6-luna[low]", auth: "subscription", mode: "read-only" },
   pi: { model: process.env["ZMC_LIVE_PI_MODEL"] ?? "qwen38/qwen38-27b", auth: "api-key" },

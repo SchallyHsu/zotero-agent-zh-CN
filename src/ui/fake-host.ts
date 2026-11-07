@@ -4,6 +4,7 @@ import { CATALOGS, bigPiCatalog, defaultSettings } from "./fake-catalog.ts";
 import { repeatLine } from "./economy.ts";
 import { DIAGRAM_ANSWER } from "./fake-diagrams.ts";
 import { FakeSkills } from "./fake-skills.ts";
+import { paperFromChips, projectFolderName } from "./session-model.ts";
 import type {
   AgentRuntime, AgentSession, BackendId, BackendStatus, Catalog, ChatEvent, ContextChip, DoctorCheck, ItemHit, NoteRequest, PanelHost,
   PanelSettings, PermissionOption, PromptInput, SavedSession, StartOpts, ZoteroRef,
@@ -196,7 +197,7 @@ class FakeSession implements AgentSession {
   async prompt(input: PromptInput): Promise<void> {
     this.sim.prompts.push(input);
     this.cancelled = false;
-    const turn = `turn-${++this.turnNo}-${this.sessionId}`;
+    const turn = `turn-${++this.turnNo}-${this.sessionId}-${Date.now().toString(36)}`;
     const q = input.text.toLowerCase();
     this.emit({ t: "turn_start", turn });
     if (this.sim.startFails === "prompt") { this.sim.startFails = null; throw new Error("the bridge exited (code 1)"); }
@@ -292,6 +293,8 @@ export class FakeHost implements PanelHost {
         { id: "claude-code", label: "Claude Code", available: true, account: "Claude Max" },
         { id: "codex", label: "Codex", available: false, reason: "codex is not installed" },
         { id: "pi", label: "pi", available: true },
+        { id: "antigravity", label: "Antigravity", available: false, reason: "Install Antigravity CLI and run `agy acp --login`." },
+        { id: "deepseek-harness", label: "DeepSeek Harness", available: false, reason: "Install DeepSeek Harness and configure its provider in `dsh web`." },
       ],
       setContext: (k) => { this.ctx = k === "none" ? [] : k === "selection" ? [ITEM_CHIP, SELECTION_CHIP] : k === "area" ? [{ ...ITEM_CHIP, id: "reader:LUND2021", label: "Lundberg 2021 - The G…", ref: { libraryID: 1, itemKey: "LUND2021" } }, AREA_CHIP] : [ITEM_CHIP]; for (const cb of [...this.ctxCbs]) cb(); },
       setTheme: (t) => { this._theme = t; for (const cb of [...this.themeCbs]) cb(); },
@@ -356,7 +359,7 @@ export class FakeHost implements PanelHost {
   async clearHistory() { this.store.clear(); this.sim.data.cleared++; }
   async revealWorkspace() { this.sim.data.revealed++; }
   async resetSettings() { this.settings = defaultSettings(); this.sim.image = null; this.sim.data.resets++; }
-  private folder() { return this.settings.chatFolder || DEFAULT_FOLDER; }
+  private folder() { return `${this.settings.chatFolder || DEFAULT_FOLDER}/${projectFolderName(this.settings.projectName)}`; }
   about() { return { version: "0.1.0", workspace: this.folder() }; }
   async setApiKey(b: BackendId, key: string | null) { if (key) this.sim.keys[b] = key; else delete this.sim.keys[b]; }
   async hasApiKey(b: BackendId) { return !!this.sim.keys[b]; }
@@ -390,6 +393,18 @@ export class FakeHost implements PanelHost {
     }
   }
   async sessions() { await sleep(this.sim.speed ? 120 : 0); return [...this.store.values()].map((s) => s.meta); }
+  currentPaper() { return paperFromChips(this.ctx); }
+  async saveSession(s: SavedSession) {
+    const cur = this.store.get(s.id) ?? { meta: s, events: [] };
+    cur.meta = { ...cur.meta, ...s }; this.store.set(s.id, cur); return cur.meta;
+  }
+  async renameSession(id: string, title: string) {
+    const s = this.store.get(id)?.meta;
+    if (!s) throw new Error("Chat no longer exists");
+    if (!title.trim()) throw new Error("Enter a chat name");
+    return this.saveSession({ ...s, title: title.trim().slice(0, 200), titleUpdatedAt: Date.now() });
+  }
+  async syncSession(s: SavedSession) { return s; }
   async loadEvents(id: string) { return this.store.get(id)?.events ?? []; }
   async appendEvent(session: SavedSession, ev: ChatEvent) {
     this.sim.writes.push({ session: session.id, ev });
@@ -441,8 +456,8 @@ export class FakeHost implements PanelHost {
   async removeImage() { this.sim.image = null; }
   /** What each backend's own CLI takes to continue a session; the folder is quoted for the shell. */
   resumeCommand(s: SavedSession) {
-    const cmd = { "claude-code": `claude --resume ${s.agentSessionId}`, codex: `codex resume ${s.agentSessionId}`, pi: `pi --session ${s.agentSessionId}` }[s.backend];
-    return s.agentSessionId ? `cd '${s.cwd.replace(/'/g, "'\\''")}' && ${cmd}` : null;
+    const cmd = { "claude-code": `claude --resume ${s.agentSessionId}`, codex: `codex resume ${s.agentSessionId}`, pi: `pi --session ${s.agentSessionId}`, antigravity: `agy --conversation ${s.agentSessionId}`, "deepseek-harness": "" }[s.backend];
+    return s.agentSessionId && cmd ? `cd '${s.cwd.replace(/'/g, "'\\''")}' && ${cmd}` : null;
   }
   async prepareSession(cwd?: string) { this.sim.preparedCwd.push(cwd); return { cwd: cwd ?? this.folder(), brief: "You are in a Zotero side panel.", env: {} }; }
 

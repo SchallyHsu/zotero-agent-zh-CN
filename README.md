@@ -1,14 +1,16 @@
 # Zotero Agent 简体中文（非官方）
 
-基于 [54yyyu/zotero-mcp](https://github.com/54yyyu/zotero-mcp) 的 Zotero Agent 插件制作的**非官方简体中文衍生版**。主要工作是界面汉化和汉化层刷新性能优化；原插件的模型接入、文献读取、对话、工具调用等核心功能来自原项目及其贡献者。
+**0.15.2.9** 汇总项目与文章对话管理、后端项目同步、Antigravity 和 DeepSeek Harness 接入，以及安装和性能修复。Antigravity 已确认项目的续聊使用本地快路径，清理多余的 2 秒等待，并延后重复的元数据同步。见 [更新记录](CHANGELOG.md)、[性能检查](docs/antigravity-latency.md)、[安装链路验证](docs/xpi-projects-validation.md) 与 [配置说明](docs/native-backends.md)。
 
-**上游版本：** [v0.15.2](https://github.com/54yyyu/zotero-mcp/tree/v0.15.2/plugin) · **上游提交：** [`dfec70c8b772e697476e0b42c1264441cf518686`](https://github.com/54yyyu/zotero-mcp/commit/dfec70c8b772e697476e0b42c1264441cf518686) · **本版：** `0.15.2.3`
+基于 [54yyyu/zotero-mcp](https://github.com/54yyyu/zotero-mcp) 的 Zotero Agent 插件制作的**非官方简体中文衍生版**。本仓库增加界面汉化、项目与文章对话管理、后端适配和性能优化；原插件的模型接入、文献读取、对话、工具调用等核心功能来自原项目及其贡献者。
+
+**上游版本：** [v0.15.2](https://github.com/54yyyu/zotero-mcp/tree/v0.15.2/plugin) · **上游提交：** [`dfec70c8b772e697476e0b42c1264441cf518686`](https://github.com/54yyyu/zotero-mcp/commit/dfec70c8b772e697476e0b42c1264441cf518686) · **本版：** `0.15.2.9`
 
 本项目不是 Zotero 或 Zotero MCP 官方发布，不代表原作者背书。请先了解原项目，并将通用功能问题与本仓库的汉化问题区分开。
 
 ## 下载与安装
 
-1. 从 [Releases](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases) 下载 `zotero-agent-zh-CN-0.15.2.3.xpi`，校验文件为 `SHA256SUMS.txt`。
+1. 从 [Releases](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases) 下载 `zotero-agent-zh-CN-0.15.2.9.xpi`，校验文件为 `SHA256SUMS.txt`。
 2. 打开 Zotero → **工具 → 插件**，点击齿轮，选择“从文件安装插件”，选取 `.xpi`；按提示重新启动 Zotero。
 3. 从工具栏“文献助手”按钮打开侧栏，完成原插件要求的 `zotero-cli` 和模型后端配置。详细要求见 [上游插件文档](https://github.com/54yyyu/zotero-mcp/blob/v0.15.2/docs/chat-plugin.md)。
 
@@ -17,6 +19,19 @@
 **兼容性：** 上游声明支持 Zotero 7+，实际桌面验证环境为 Windows 11 / Zotero 10.0.7；其他平台及版本尚未逐一实测。
 
 **更新行为：** 保留上游自动更新地址。未来官方版本更新可能将界面恢复为英文；本仓库没有独立的自动更新服务。
+
+## 项目与文章对话
+
+- 设置 → **项目与对话**：项目名称默认 `Zotero Agent`，新会话在“对话目录”下的同名子目录运行；改名后新对话进入新项目，旧对话仍在原项目续聊。
+- 历史对话默认按**项目／文章**分组；铅笔按钮可重命名，支持原生改名的后端会自动同步名称。同步失败时显示警告按钮，悬停查看原因，点击重试；本地记录仍保留改名。DeepSeek Harness 的改名目前保存在插件内。
+- 打开文章默认恢复与当前后端上次打开的对话；可用“新建对话”为同文另开一段。关闭设置中的自动恢复开关可保持手动切换。回复生成中不会被文章切换打断，完成后恢复目标文章会话。
+- 文章以文献库 ID 和父条目 key 关联，多份 PDF 属于同一条目时归到同文，跨库同 key 分开。旧历史从首条用户消息中的文章上下文补全；不明确的保留为通用对话。
+- **Codex**：通过本机 `codex app-server` 同步项目、会话名称及项目归属，复用 ACP 会话 ID，不复制对话正文。同名的插件项目复用同一后端项目，旧目录和新目录合并为它的工作根目录。项目接口为实验接口，需要客户端版本支持 `project/list`、`project/create`、`project/update` 和 `thread/metadata/update.projectId`；本机已用隔离配置验证，不支持时会显示失败原因。会话命名接口见 [官方 app-server 文档](https://developers.openai.com/codex/app-server)。
+- **Codex 桌面侧栏**：除 app-server 记录外，桌面另有本地项目目录。插件首次登记会等待桌面完全退出后备份并合并侧栏目录；请退出后等待约 5 秒再打开。已有项目及无关会话归属保留，状态可在历史页刷新。
+- **Claude Code / pi**：以项目工作目录组织会话，用 ACP bridge 已安装的 SDK 重命名。Claude Code 会重新读取原生目录项目确认名称和归属，已使用真实官方 SDK 验证。旧会话保留原始目录，新会话进入设置中的项目子目录。这些目录项目不等同于 Claude 网页版 Projects。
+- **Antigravity**：安装 App 与 `agy` 后，在原生项目内预建会话，再通过 ACP 接续并共享 App 存储。旧 CLI 对话通过一致性快照和原生分叉接续到项目，原对话保留；名称同步到原生摘要，首条回复前会保持待处理状态。
+- **DeepSeek Harness**：通过本地配套扩展同步到 dsh 原生工作区，首次安装后需完全退出并重开 dsh Desktop / Web 宿主一次。之后新会话自动归类，旧会话按原 ID 回填；未收到原生确认时显示待处理状态。
+- 项目及历史保存在本机，不通过 Zotero 文献同步。元数据同步不调用模型、不额外发送论文或对话正文。
 
 ## 汉化内容
 
@@ -54,7 +69,7 @@ npm run typecheck
 npm run build
 ```
 
-生成的安装包为 `dist/zotero-agent.xpi`。完整源码、构建脚本、锁文件、许可证与来源说明均在本仓库中；下载对应的 `zh-CN-v0.15.2.3` 源码标签可获得该发布版的源码。
+生成的安装包为 `dist/zotero-agent.xpi`。完整源码、构建脚本、锁文件、许可证与来源说明均在本仓库中；下载对应的 `zh-CN-v0.15.2.9` 源码标签可获得该发布版的源码。
 
 ## 验证与开发预览
 
@@ -64,11 +79,13 @@ npm test
 npm run test:performance
 ```
 
+项目、改名与文章恢复的回归检查包含在 `npm test` 中。本机已安装 Codex CLI 时，可额外运行 `npm run test:native-codex`：在临时 `CODEX_HOME` 中创建合成会话，验证中文改名、不同工作目录复用同一项目以及会话归属；不调用模型，不读写真实 Codex 历史。
+
 `npm test` 会执行类型检查、构建预览并运行界面检查；单独构建预览可运行 `npm run preview`。预览入口为 `preview/dist/index.html`。界面检查覆盖主页、设置、历史、状态、深色主题、动态文案、正文保护、输入值与权限 ID；仅使用合成数据，不读取 Zotero 文献库。生成的报告和截图位于 `test-output/`，不会提交到版本库。
 
 如需使用已安装的 Edge/Chrome，可设置进程环境变量 `BROWSER_EXECUTABLE` 为其可执行文件路径，再运行界面与性能检查。界面检查和性能比较不需要连接模型服务。
 
-默认 `npm test` 聚焦本次汉化改动；保留的上游完整测试可运行 `npm run test:upstream`，但在本机遇到符号链接权限和跨平台路径断言失败，未宣称全套测试通过。完整边界见 [验证记录](docs/VALIDATION.md)。
+默认 `npm test` 覆盖汉化、项目与文章对话管理及后端适配回归；保留的上游完整测试可运行 `npm run test:upstream`，但在本机遇到符号链接权限和跨平台路径断言失败，未宣称全套测试通过。完整边界见 [验证记录](docs/VALIDATION.md)。
 
 ## 来源、修改与许可证
 

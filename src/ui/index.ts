@@ -21,6 +21,7 @@ import { BACKEND_LABEL, BACKENDS, emptyState, historyView, setupCard, statusView
 import { welcomeView } from "./welcome.ts";
 import { localizeRoot } from "./localize.ts";
 import { enabledSkills, invocationText, parseInvocation, pinned, skillPath } from "./skills-model.ts";
+import { latestPaperSession, paperKey } from "./session-model.ts";
 
 type View = "chat" | "history" | "settings" | "status" | "welcome";
 
@@ -61,6 +62,13 @@ class Panel {
   private disposers: (() => void)[] = [];
   private catalogs = new Map<BackendId, Catalog>();
   private seenImage: string;
+  private seenExecutables = "";
+  private focusedPaper = "";
+  private focusVersion = 0;
+  private switchingPaper = false;
+  private disposed = false;
+  private drafts = new Map<string, { text: string; chips: ReturnType<ChipState["draft"]> }>();
+  private navigation: Promise<void> = Promise.resolve();
 
   constructor(root: ShadowRoot, host: PanelHost) {
     this.root = root;
@@ -116,7 +124,7 @@ class Panel {
       loadChoices: async () => { await this.loadCatalog(true); return this.choices(); },
       switchAgent: (id) => this.switchAgent(id),
       hasMessages: () => this.chat.tr.messages.length > 0,
-      onFirstFocus: () => { if (!this.chat.session && !this.chat.starting && !this.health.blockReason()) void this.chat.ensureSession().catch(() => {}); },
+      onFirstFocus: () => { if (!this.switchingPaper && !this.chat.session && !this.chat.starting && !this.health.blockReason()) void this.chat.ensureSession().catch(() => {}); },
       checkSetup: () => this.show("status"),
       onNewChat: () => void this.newChat(),
       contextInfo: () => ({ stats: chatStats(this.chat.tr), showCost: host.getSettings().showUsage, sent: sentLine(this.chat.lastContext), canCompact: !!this.chat.session?.canCompact }),
@@ -140,7 +148,7 @@ class Panel {
     this.look.apply();
     root.append(h("style", { text: STYLES }), this.app);
 
-    this.disposers.push(host.onContextChange(() => this.refreshChips()), host.onThemeChange(() => { this.app.dataset.theme = host.theme(); }),
+    this.disposers.push(host.onContextChange(() => { this.refreshChips(); void this.followPaper(); }), host.onThemeChange(() => { this.app.dataset.theme = host.theme(); }),
       host.onSettingsChange(() => this.onOutsideSettings()));
     this.refreshChips();
     this.onHealth();
@@ -149,6 +157,7 @@ class Panel {
     this.render();
     void this.health.refresh();
     if (!host.getSettings().welcomed) this.show("welcome");
+    void this.followPaper();
 
     this.handle = {
       dispose: () => this.dispose(),
@@ -175,7 +184,7 @@ class Panel {
     const back = () => this.show("chat");
     const host = this.host;
     const screen =
-      v === "history" ? historyView(host, { current: () => this.chat.saved?.id ?? null, back, resume: (s) => void this.openSaved(s), deleted: (id) => { if (this.chat.saved?.id === id) void this.newChat(); } })
+      v === "history" ? historyView(host, { current: () => this.chat.saved?.id ?? null, back, resume: (s) => void this.openSaved(s), renamed: (s) => { if (this.chat.saved?.id === s.id) { this.chat.saved = s; this.render(); } }, deleted: (id) => { if (this.chat.saved?.id === id) void this.newChat(); } })
       : v === "welcome" ? welcomeView(host, this.health, { done: () => void this.finishWelcome(), recheck: () => void this.health.refresh(), changed: () => this.onSettings(), openSettings: () => this.show("settings") })
       : v === "status" ? statusView(host, { back, initial: this.health.checks, openSettings: () => this.show("settings"), changed: (c) => this.health.set(c) })
       : settingsView(host, { back, statuses: () => this.health.statuses, refreshStatuses: () => void this.health.refreshStatuses().then(() => this.activeView?.render?.()), changed: () => this.onSettings(), look: this.look,
@@ -209,22 +218,68 @@ class Panel {
     try { await this.host.open(target); } catch (e) { this.warn(`Couldn't open that in Zotero: ${errMessage(e)}`); }
   }
 
-  private async newChat(): Promise<void> {
-    await this.chat.reset();
-    this.chips.clearAll();
-    this.composer.clearDraft();
-    this.feed.clear();
-    this.show("chat");
-    this.refreshChips();
-    this.render();
+  private async newChat(automatic = false): Promise<void> {
+    if (!automatic) { this.focusVersion++; this.focusedPaper = paperKey(this.host.currentPaper()); }
+    const run = this.navigation.then(async () => {
+      await this.chat.reset();
+      this.chips.clearAll();
+      this.composer.clearDraft();
+      this.feed.clear();
+      if (!automatic || this.view === "chat") this.show("chat");
+      this.refreshChips();
+      this.render();
+    });
+    this.navigation = run.catch(() => {});
+    await run;
   }
 
-  private async openSaved(s: Parameters<Chat["load"]>[0]): Promise<void> {
-    this.feed.clear();
-    await this.chat.load(s);
-    this.show("chat");
-    this.render();
-    this.feed.toBottom(false);
+  private async openSaved(s: Parameters<Chat["load"]>[0], automatic = false): Promise<void> {
+    if (!automatic) { this.focusVersion++; this.focusedPaper = paperKey(this.host.currentPaper()); }
+    const run = this.navigation.then(async () => {
+      this.feed.clear();
+      this.chips.clearAll();
+      this.composer.clearDraft();
+      await this.chat.load(s);
+      if (!automatic || this.view === "chat") this.show("chat");
+      this.refreshChips();
+      this.render();
+      this.feed.toBottom(false);
+    });
+    this.navigation = run.catch(() => {});
+    await run;
+  }
+
+  /** Serialise transitions and recheck focus after async reads: a fast A→B→C switch must end on C. */
+  private async followPaper(): Promise<void> {
+    if (this.disposed || this.switchingPaper || this.chat.busy || !this.host.getSettings().autoResumePaper) return;
+    const paper = this.host.currentPaper();
+    const key = paperKey(paper);
+    if (!paper || !key || key === this.focusedPaper) return;
+    const version = this.focusVersion;
+    const backend = this.host.getSettings().backend;
+    this.switchingPaper = true;
+    try {
+      const all = await this.host.sessions();
+      if (this.disposed || version !== this.focusVersion || key !== paperKey(this.host.currentPaper()) || this.chat.busy || backend !== this.host.getSettings().backend || !this.host.getSettings().autoResumePaper) return;
+      const draft = { text: this.composer.draftText(), chips: this.chips.draft() };
+      if (draft.text || draft.chips.added.length || draft.chips.pinned.length) this.drafts.set(this.focusedPaper, draft);
+      else this.drafts.delete(this.focusedPaper);
+      const target = latestPaperSession(all, paper, backend);
+      this.focusedPaper = key;
+      if (target?.id !== this.chat.saved?.id) {
+        if (target) await this.openSaved(target, true);
+        else await this.newChat(true);
+      }
+      const restore = this.drafts.get(key);
+      this.composer.setText(restore?.text ?? "");
+      this.chips.restoreDraft(restore?.chips);
+      this.refreshChips();
+    } catch (e) { this.focusedPaper = key; this.warn(`Couldn't open that chat: ${errMessage(e)}`); }
+    finally {
+      this.switchingPaper = false;
+      if (!this.disposed) this.render();
+      if (!this.disposed && !this.chat.busy && key !== paperKey(this.host.currentPaper())) void this.followPaper();
+    }
   }
 
   // ───────────────────────────── health and settings ─────────────────────────────
@@ -235,7 +290,7 @@ class Panel {
     const st = this.health.backend();
     this.statusBtn.dataset.state = this.health.state;
     // Say plainly who pays: a subscription's account name, or "API key". pi has neither: it uses the user's own provider keys.
-    const label = s.backend === "pi" ? "pi" : s.auth[s.backend] === "api-key" ? `${BACKEND_LABEL[s.backend]} · API key` : st?.account || `${BACKEND_LABEL[s.backend]} · subscription`;
+    const label = s.backend === "pi" || s.backend === "deepseek-harness" ? BACKEND_LABEL[s.backend] : s.auth[s.backend] === "api-key" ? `${BACKEND_LABEL[s.backend]} · API key` : st?.account || `${BACKEND_LABEL[s.backend]} · subscription`;
     this.accountEl.textContent = label;
     const bad = this.health.failing;
     const tip = { ok: "Everything is set up", checking: "Checking…", unknown: "Status unknown", warn: "", bad: "" }[this.health.state] || bad.map((c) => c.label).join(", ");
@@ -262,12 +317,15 @@ class Panel {
   }
 
   private onSettings(): void {
+    const commands = JSON.stringify(this.host.getSettings().agentExecutables ?? {});
+    if (commands !== this.seenExecutables) { this.seenExecutables = commands; this.catalogs.clear(); }
     this.onHealth();
     this.applyBehavior();
     // An empty chat has no history to protect: let a changed backend take effect on the next send.
     if (!this.chat.tr.messages.length && this.chat.session && !this.chat.sending) void this.chat.closeSession();
     void this.loadCatalog(false);
     void this.health.refreshStatuses();
+    void this.followPaper();
   }
 
   /** Saved elsewhere (Zotero's Settings pane, another window): the look, the behaviour, the pickers and an open settings screen follow. */
@@ -281,7 +339,7 @@ class Panel {
   /** What the composer's pickers show: the live session's values, else the saved choice over the backend's catalog. */
   private choices(): Choices {
     const s = this.host.getSettings();
-    const b = s.backend;
+    const b = this.chat.saved?.backend ?? s.backend;
     const sess = this.chat.session;
     const cat = this.catalogs.get(b);
     const saved = (k: "model" | "mode" | "effort") => s[k][b] || cat?.[k];
@@ -316,7 +374,7 @@ class Panel {
 
   /** The composer's agent switch: new chats use `id`, and a chat with messages is replaced by a new one. */
   private async switchAgent(id: BackendId): Promise<void> {
-    if (id === this.host.getSettings().backend) return;
+    if (id === (this.chat.session?.backend ?? this.chat.saved?.backend ?? this.host.getSettings().backend)) return;
     await this.host.setSettings({ backend: id });
     if (this.chat.tr.messages.length) await this.newChat();
     this.onSettings();
@@ -357,7 +415,7 @@ class Panel {
 
   private send(text: string, fromDraft = true): void {
     if (this.health.blockReason()) { this.show("status"); return; }
-    if (this.chat.busy) return;
+    if (this.chat.busy || this.switchingPaper) return;
     const used = this.chips.current();
     if (fromDraft) this.composer.clearDraft();
     this.chips.clearAdded();
@@ -418,12 +476,15 @@ class Panel {
     const empty = c.tr.messages.length === 0;
     if (this.emptyShown !== empty) { this.emptyShown = empty; this.paintEmpty(); }
     this.feed.update(c.tr, !c.busy);
-    this.composer.setBusy(c.busy);
+    this.composer.setBusy(c.busy || this.switchingPaper);
     this.composer.setContextFill(contextFill(c.tr));
     this.feed.setPending(c.sending && c.tr.running === null ? (c.compacting ? "Summarising" : c.starting ? `Starting ${BACKEND_LABEL[this.host.getSettings().backend]}` : "Sending") : null);
+    if (!c.busy) void this.followPaper();
   }
 
   private dispose(): void {
+    this.disposed = true;
+    this.focusVersion++;
     this.chat.flush();
     for (const d of this.disposers.splice(0)) { try { d(); } catch { /* ignore */ } }
     this.composer.dispose();

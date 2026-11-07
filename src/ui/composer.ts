@@ -140,6 +140,7 @@ export class Composer {
   setText(t: string): void { this.ta.value = t; this.autosize(); this.syncSend(); if (!t.startsWith("/")) this.slash.close(); }
 
   clearDraft(): void { this.setText(""); }
+  draftText(): string { return this.ta.value; }
 
   /** How full the agent's context is: the ring whenever the backend says (hidden when it does not), a new-chat suggestion from FULL_AT. */
   setContextFill(fill: Fill | null): void {

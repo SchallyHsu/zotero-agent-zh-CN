@@ -87,7 +87,7 @@ export type ChatEvent =
 
 // ───────────────────────────── agent/ ─────────────────────────────
 
-export type BackendId = "claude-code" | "codex" | "pi";
+export type BackendId = "claude-code" | "codex" | "pi" | "antigravity" | "deepseek-harness";
 
 export interface ModelOption { id: string; name: string; description?: string }
 export interface ModeOption { id: string; name: string; description?: string }
@@ -104,6 +104,13 @@ export interface BackendStatus {
 }
 
 export interface StartOpts {
+  /** Native project context supplied by the Zotero host. */
+  projectName?: string;
+  sessionTitle?: string;
+  /** Antigravity App conversations are shared with its native ACP process. */
+  antigravityStorage?: { geminiDir: string };
+  /** A metadata service pre-created this empty session; still append the first prompt brief. */
+  freshNativeSession?: boolean;
   backend: BackendId;
   /** The agent's working directory (the chat workspace). */
   cwd: string;
@@ -284,6 +291,8 @@ export interface PanelSettings {
   effort: Record<BackendId, string>;
   /** Per backend: run on the user's subscription (bridge login) or on an API key kept in the OS keychain. */
   auth: Record<BackendId, "subscription" | "api-key">;
+  /** Optional executable path for a native ACP backend; never a shell command. */
+  agentExecutables?: Partial<Record<BackendId, string>>;
   prompts: PromptEntry[];
   /** Per skill name: its pin slot (shared with the prompts' slots) and whether it is turned off. */
   skills?: Record<string, { slot?: number; off?: boolean }>;
@@ -310,6 +319,10 @@ export interface PanelSettings {
   welcomed: boolean;
   /** Where new chats run: the agent's working directory, and where the zotero-cli skill is installed. "" = the default folder. */
   chatFolder: string;
+  /** New chats share a named project under the chat folder. */
+  projectName: string;
+  /** Restore the last conversation when the focused paper changes. */
+  autoResumePaper: boolean;
 
   // Translate, in the reader's text selection popup.
   /** The popup shows a Translate button. */
@@ -339,6 +352,8 @@ export interface Appearance {
   density: "compact" | "comfortable";
 }
 
+export interface PaperIdentity { libraryID: number; itemKey: string; title: string }
+
 export interface SavedSession {
   id: string;
   title: string;
@@ -348,6 +363,17 @@ export interface SavedSession {
   /** The bridge's session id, for session/load. */
   agentSessionId: string;
   updatedAt: number;
+  projectName?: string;
+  paper?: PaperIdentity;
+  lastOpenedAt?: number;
+  titleUpdatedAt?: number;
+  backendProjectId?: string;
+  backendSyncedTitle?: string;
+  backendSyncedProjectName?: string;
+  syncError?: string;
+  /** The DSH GUI companion has not yet acknowledged native workspace ownership. */
+  syncPending?: boolean;
+  backendSyncVersion?: number;
 }
 
 export interface DoctorCheck {
@@ -389,6 +415,10 @@ export interface PanelHost {
   hasApiKey(backend: BackendId): Promise<boolean>;
 
   sessions(): Promise<SavedSession[]>;
+  currentPaper(): PaperIdentity | null;
+  saveSession(session: SavedSession): Promise<SavedSession>;
+  renameSession(id: string, title: string): Promise<SavedSession>;
+  syncSession(session: SavedSession): Promise<SavedSession>;
   loadEvents(sessionId: string): Promise<ChatEvent[]>;
   appendEvent(session: SavedSession, ev: ChatEvent): Promise<void>;
   deleteSession(sessionId: string): Promise<void>;
@@ -404,7 +434,7 @@ export interface PanelHost {
 
   doctor(): Promise<DoctorCheck[]>;
   /** The brief and folder for an agent session (the host knows where the CLI and skill are). `cwd` resumes a saved chat in the folder it ran in; omitted, the chat folder setting is used. */
-  prepareSession(cwd?: string): Promise<{ cwd: string; brief: string; env: Record<string, string> }>;
+  prepareSession(cwd?: string, backend?: BackendId): Promise<{ cwd: string; brief: string; env: Record<string, string> }>;
   /** A folder picker; null when cancelled. */
   chooseFolder(start?: string): Promise<string | null>;
   /** Zotero's Save dialog for `data` (a diagram's PNG or SVG); writes the file and returns its path, null when cancelled. */

@@ -79,6 +79,9 @@ export function settingsView(host: SettingsHost, o: SettingsDeps): { el: HTMLEle
     const cur = sts?.find((x) => x.id === b);
     const cat = cats.get(b);
     const parts: HTMLElement[] = [];
+    const native = b === "antigravity" || b === "deepseek-harness";
+    const agents = seg("Agent", BACKENDS.map((id) => ({ id, label: BACKEND_LABEL[id], title: sts?.find((x) => x.id === id && !x.available)?.reason })), b, (id) => void save({ backend: id as BackendId }));
+    agents.classList.add("seg--agents");
     if (!cat && o.catalogReady && !o.catalogReady(b)) {
       parts.push(h("div.field", null, hint(`The model, effort and permissions are read from ${BACKEND_LABEL[b]} itself, which starts it for a moment.`),
         h("div", null, h("button.btn.btn--sm", { type: "button", onclick: () => loadCatalog(b, true) }, `Show ${BACKEND_LABEL[b]}'s options`))));
@@ -105,8 +108,14 @@ export function settingsView(host: SettingsHost, o: SettingsDeps): { el: HTMLEle
       }
     }
     return section("Agent", "Who you chat with, how it signs in, and what it may do.",
-      seg("Agent", BACKENDS.map((id) => ({ id, label: BACKEND_LABEL[id], title: sts?.find((x) => x.id === id && !x.available)?.reason })), b, (id) => void save({ backend: id as BackendId })),
+      agents,
       hint(sts ? (cur?.available ? `${cur.label} is ready.` : `${cur?.label ?? BACKEND_LABEL[b]} isn't ready: ${cur?.reason ?? "not found"}.`) : "Looking for agents…"),
+      native ? h("label.field", null, h("span.field__l", null, "Agent executable"),
+        h("input.input", { value: s.agentExecutables?.[b] || "", placeholder: b === "antigravity" ? "agy" : "dsh", "aria-label": "Agent executable", dataset: { fid: `executable:${b}` },
+          onchange: (e: Event) => { cats.delete(b); void save({ agentExecutables: { ...s.agentExecutables, [b]: (e.target as HTMLInputElement).value.trim() } }); } }),
+        hint("Leave empty to search PATH. Enter only the executable path, without arguments or surrounding quotes."),
+        hint(b === "antigravity" ? "Launches agy acp. Sign in using agy acp --login before connecting." : "Launches dsh --profile acp. Configure models and provider credentials using dsh web; Node.js 24.9+ is required."),
+        hint(b === "deepseek-harness" ? "DSH projects sync through a local companion extension. After first use, fully quit and reopen dsh once. Existing conversations in the same project directory are included. Chat renames remain local." : "Native projects and chat titles sync through Antigravity App. Install the App alongside agy. Legacy CLI conversations continue as native forks in the selected project; originals are kept.")) : null,
       signIn(s),
       parts.length ? h("div.fields", null, ...parts) : null,
       hint("These apply to your next new chat; the model and mode buttons under the message box change the current one."));
@@ -114,6 +123,7 @@ export function settingsView(host: SettingsHost, o: SettingsDeps): { el: HTMLEle
 
   function signIn(s: PanelSettings): HTMLElement {
     const b = s.backend;
+    if (b === "deepseek-harness") return sub("Sign-in", hint("DeepSeek Harness uses its own provider configuration. Set credentials in dsh web or its configuration; the plugin does not treat it as a DeepSeek model API endpoint."));
     if (b === "pi") return sub("Sign-in", hint("pi has no subscription to sign in to. It runs on the provider keys already in your shell or in pi's own settings, so there is nothing to set up here."));
     const mode = s.auth[b] ?? "subscription";
     const st = o.statuses()?.find((x) => x.id === b);
@@ -141,6 +151,7 @@ export function settingsView(host: SettingsHost, o: SettingsDeps): { el: HTMLEle
 
   /** The reader's Translate button. Its model list is the catalog this screen already has; none known, only the default. */
   function translate(s: PanelSettings): HTMLElement {
+    if (s.backend === "antigravity" || s.backend === "deepseek-harness") return section("Translate", "Reader translation is unavailable for this backend. Chat and article conversations remain available.");
     const b = s.backend;
     const cat = cats.get(b);
     const models = cat?.state === "ok" ? cat.catalog.models : [];
@@ -167,6 +178,16 @@ export function settingsView(host: SettingsHost, o: SettingsDeps): { el: HTMLEle
         h("button.btn.btn--sm", { type: "button", onclick: () => void host.revealWorkspace().catch((e) => { keyMsg = errMessage(e); render(); }) }, "Open")),
       hint("Every chat remembers its own folder, so changing this never breaks an old chat. If you pick an existing project, the skill is added under .claude/skills and AGENTS.md (only the block we mark is changed)."),
       keyMsg ? h("p.sec__hint", { role: "status" }, keyMsg) : null);
+  }
+
+  function projects(s: PanelSettings): HTMLElement {
+    const input = h("input.input", { type: "text", value: s.projectName, maxlength: "120", "aria-label": "Project name", dataset: { fid: "project-name" },
+      onchange: (e: Event) => void save({ projectName: (e.target as HTMLInputElement).value.trim() || "Zotero Agent" }) });
+    return section("Projects and conversations", "New conversations are grouped in a project and linked to the paper you are reading.",
+      h("label.field", null, h("span.field__label", null, "Project name"), input),
+      hint("The default is Zotero Agent. Changing the name creates a project for new chats; saved chats keep their original project."),
+      flag("autoResumePaper", "Resume the last chat for each paper", "Opening a paper restores its last conversation with the selected agent. A running answer finishes before switching."),
+        hint("Codex: first sidebar registration waits for the desktop to exit; wait five seconds before reopening. Claude Code: native directory projects and chat titles are verified. Antigravity: native projects require the App. Sync status appears in History."));
   }
 
   function data(): HTMLElement {
@@ -207,7 +228,7 @@ export function settingsView(host: SettingsHost, o: SettingsDeps): { el: HTMLEle
         flag("showUsage", "Show tokens and cost", "A small line under each answer. Off by default."),
         flag("openAtStart", "Open the panel when Zotero starts", ""),
       ),
-      translate(s), skills(), folder(s), data(), about(s),
+      translate(s), skills(), projects(s), folder(s), data(), about(s),
       h("div.set__saved", { role: "status", "aria-live": "polite" }, h("span", null, saved)));
     if (scroller) scroller.scrollTop = top;
     if (fid) (body.querySelector(`[data-fid="${CSS.escape(fid)}"]`) as HTMLElement | null)?.focus({ preventScroll: true });

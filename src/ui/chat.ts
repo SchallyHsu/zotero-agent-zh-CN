@@ -7,6 +7,7 @@ import { chipHash, planContext } from "./economy.ts";
 import { Persister } from "./persist.ts";
 import { applyEvent, emptyTranscript, promptFor, replay } from "./transcript.ts";
 import type { TranscriptState } from "./transcript.ts";
+import { DEFAULT_PROJECT } from "./session-model.ts";
 
 export interface ChatDeps {
   host: PanelHost;
@@ -84,17 +85,21 @@ export class Chat {
     const host = this.d.host;
     const p = (async () => {
       const set = host.getSettings();
-      const prep = await host.prepareSession(this.resume?.cwd);
-      this.cwd = prep.cwd;
+      const backend = this.resume?.backend ?? this.saved?.backend ?? set.backend;
+      const prep = await host.prepareSession(this.resume?.cwd, backend);
+      if (gen !== this.gen) throw new Error("cancelled");
       const sess = await host.runtime.start({
-        backend: set.backend, cwd: prep.cwd, brief: prep.brief, env: prep.env,
-        ...(set.model[set.backend] ? { model: set.model[set.backend] } : {}),
-        ...(set.mode[set.backend] ? { mode: set.mode[set.backend] } : {}),
-        ...(set.effort[set.backend] ? { effort: set.effort[set.backend] } : {}),
-        ...(set.backend !== "pi" ? { auth: set.auth[set.backend] } : {}),
+        backend, cwd: prep.cwd, brief: prep.brief, env: prep.env,
+        projectName: this.saved?.projectName || set.projectName || DEFAULT_PROJECT,
+        sessionTitle: this.saved?.title,
+        ...(set.model[backend] ? { model: set.model[backend] } : {}),
+        ...(set.mode[backend] ? { mode: set.mode[backend] } : {}),
+        ...(set.effort[backend] ? { effort: set.effort[backend] } : {}),
+        ...(backend !== "pi" ? { auth: set.auth[backend] } : {}),
         ...(this.resume?.agentSessionId ? { resumeSessionId: this.resume.agentSessionId } : {}),
       });
       if (gen !== this.gen) { void sess.close().catch(() => {}); throw new Error("cancelled"); }
+      this.cwd = prep.cwd;
       this.session = sess;
       this.sent.clear(); // a new or resumed session: everything goes in full once (DESIGN.md "Context budget")
       this.resume = null;
@@ -122,9 +127,11 @@ export class Chat {
 
   async send(text: string, used: ContextChip[]): Promise<void> {
     if (this.busy || this.d.blockReason()) return;
+    const gen = this.gen;
     const host = this.d.host;
     if (!this.saved) {
-      this.saved = { id: nextId("s") + Date.now().toString(36), title: clip(text, 60), backend: host.getSettings().backend, cwd: this.resume?.cwd ?? "", agentSessionId: this.resume?.agentSessionId ?? "", updatedAt: Date.now() };
+      const paper = host.currentPaper();
+      this.saved = { id: nextId("s") + Date.now().toString(36), title: clip(text, 60), backend: host.getSettings().backend, cwd: this.cwd, agentSessionId: this.session?.sessionId ?? "", updatedAt: Date.now(), lastOpenedAt: Date.now(), projectName: host.getSettings().projectName || DEFAULT_PROJECT, ...(paper ? { paper } : {}) };
     }
     this.sending = true;
     // The bubble shows what the composer showed: context already in this chat is only named to the agent, not shown again.
@@ -137,9 +144,14 @@ export class Chat {
       // The focused paper's metadata and full-text file, prepared while the session starts (never longer than 1.5 s after).
       const paper = host.paperContext(used, starting).catch(() => [] as ContextChip[]);
       const sess = await starting;
-      this.saved = { ...this.saved, agentSessionId: sess.sessionId, cwd: this.cwd || this.saved.cwd };
+      if (gen !== this.gen) return;
+      const saved = await host.saveSession({ ...this.saved!, agentSessionId: sess.sessionId, cwd: this.cwd || this.saved!.cwd });
+      if (gen !== this.gen) return;
+      this.saved = saved;
+      if (saved.backend === "deepseek-harness") this.syncMetadata();
       let ctx = { text: "", images: [] as { mime: string; data: string }[] };
       const extra = await paper;
+      if (gen !== this.gen) return;
       try {
         const next = new Map(this.sent);
         const plan = planContext([...used, ...extra], next);
@@ -149,17 +161,31 @@ export class Chat {
       } catch { /* the question still goes */ }
       if (ctx.images.length && !sess.supportsImages) this.dispatch({ t: "notice", level: "warn", message: "This agent doesn't take images, so the pictures were left out of that message." });
       const said = await this.d.expand(text, this.cwd);
+      if (gen !== this.gen) return;
       await sess.prompt({
         text: [ctx.text, said].filter(Boolean).join("\n\n"),
         ...(sess.supportsImages && ctx.images.length ? { images: ctx.images } : {}),
       });
     } catch (e) {
-      await this.fail(e);
+      if (gen === this.gen) { this.sending = false; await this.fail(e); }
     } finally {
-      this.sending = false;
-      this.persister.flush();
-      this.d.onChange();
+      if (gen === this.gen) {
+        this.sending = false;
+        this.persister.flush();
+        this.syncMetadata();
+        this.d.onChange();
+      }
     }
+  }
+
+  private syncMetadata(): void {
+    if (!this.saved?.agentSessionId) return;
+    void this.d.host.syncSession(this.saved).then((updated) => {
+      if (this.saved?.id === updated.id) {
+        this.saved = { ...this.saved, agentSessionId: updated.agentSessionId, backendProjectId: updated.backendProjectId, backendSyncVersion: updated.backendSyncVersion, syncPending: updated.syncPending, syncError: updated.syncError };
+        this.d.onChange();
+      }
+    }).catch(() => {});
   }
 
   /** Summarise the conversation now (the bridge's own /compact, when it has a verified one); a notice tells the result. */
@@ -232,6 +258,7 @@ export class Chat {
     await this.closeSession();
     this.tr = emptyTranscript();
     this.saved = null;
+    this.cwd = "";
     this.resume = null;
     this.sending = false;
     this.lastContext = [];
@@ -250,8 +277,9 @@ export class Chat {
     } catch (e) {
       this.tr = replay([{ t: "notice", level: "error", message: `Couldn't open that chat: ${errMessage(e)}` }]);
     }
-    this.saved = s;
-    this.resume = s;
+    this.saved = await this.d.host.saveSession({ ...s, lastOpenedAt: Date.now() });
+    this.resume = this.saved;
+    this.syncMetadata();
     this.d.onChange();
   }
 

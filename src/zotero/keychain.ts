@@ -7,6 +7,7 @@ const ORIGIN = "chrome://zotero-chat";
 export const API_KEY_ENV: Partial<Record<BackendId, string>> = {
   "claude-code": "ANTHROPIC_API_KEY",
   codex: "OPENAI_API_KEY",
+  antigravity: "GEMINI_API_KEY",
 };
 
 const realm = (backend: BackendId) => `${backend} API key`;

@@ -5,9 +5,10 @@ import { copyText, dayGroup, env, errMessage, h, icon, isMac, relTime, setKids, 
 import { shortPath } from "./settings-model.ts";
 import { skillLabel } from "./skills-model.ts";
 import type { Pinned } from "./skills-model.ts";
+import { DEFAULT_PROJECT, paperKey } from "./session-model.ts";
 
-export const BACKEND_LABEL: Record<BackendId, string> = { "claude-code": "Claude Code", codex: "Codex", pi: "pi" };
-export const BACKENDS: BackendId[] = ["claude-code", "codex", "pi"];
+export const BACKEND_LABEL: Record<BackendId, string> = { "claude-code": "Claude Code", codex: "Codex", pi: "pi", antigravity: "Antigravity", "deepseek-harness": "DeepSeek Harness" };
+export const BACKENDS: BackendId[] = ["claude-code", "codex", "pi", "antigravity", "deepseek-harness"];
 
 /**
  * The logo (assets/logo.svg): a hollow square chat box with a small tail, and a red Z in it (--brand: the accent setting never recolours it). It follows the theme. The parts
@@ -120,12 +121,35 @@ export function frame(title: string, back: () => void, ...body: (HTMLElement | n
 
 // ───────────────────────────── history ─────────────────────────────
 
-export function historyView(host: PanelHost, o: { current(): string | null; back(): void; resume(s: SavedSession): void; deleted(id: string): void }): { el: HTMLElement; refresh(): void } {
+export function historyView(host: PanelHost, o: { current(): string | null; back(): void; resume(s: SavedSession): void; renamed(s: SavedSession): void; deleted(id: string): void }): { el: HTMLElement; refresh(): void } {
   const list = h("div.hist__list");
   const q = h("input.input", { type: "search", placeholder: "Search chats", "aria-label": "Search chats" }) as HTMLInputElement;
   let all: SavedSession[] | null = null;
   let confirming: string | null = null;
   let copied: string | null = null;
+  let editing: string | null = null;
+  let editingDraft = "";
+  let working = false;
+  let error = "";
+  const filter = h("select.input", { "aria-label": "Group conversations", onchange: () => paint() },
+    h("option", { value: "paper" }, "Group by paper"), h("option", { value: "date" }, "Group by date")) as HTMLSelectElement;
+
+  const replace = (s: SavedSession) => { all = (all ?? []).map((x) => x.id === s.id ? s : x); o.renamed(s); };
+  const rename = async (s: SavedSession, input: HTMLInputElement) => {
+    if (working) return;
+    const title = input.value.trim();
+    if (!title) { error = "Enter a chat name"; paint(); return; }
+    working = true; error = "";
+    try { replace(await host.renameSession(s.id, title)); editing = null; }
+    catch (e) { error = errMessage(e); }
+    finally { working = false; paint(); }
+  };
+  const retrySync = async (s: SavedSession) => {
+    if (working) return;
+    working = true;
+    try { replace(await host.syncSession(s)); } catch (e) { error = errMessage(e); }
+    finally { working = false; paint(); }
+  };
 
   const copyCmd = async (s: SavedSession, cmd: string) => {
     if (!(await copyText(cmd))) return;
@@ -138,7 +162,9 @@ export function historyView(host: PanelHost, o: { current(): string | null; back
   const paint = () => {
     if (!all) return;
     const needle = q.value.trim().toLowerCase();
-    const rows = all.filter((s) => !needle || s.title.toLowerCase().includes(needle)).sort((a, b) => b.updatedAt - a.updatedAt);
+    const rows = all.filter((s) => !needle || [s.title, s.projectName, s.paper?.title].some((v) => v?.toLowerCase().includes(needle))).sort((a, b) => b.updatedAt - a.updatedAt);
+    const groupId = (s: SavedSession) => JSON.stringify([s.projectName || DEFAULT_PROJECT, filter.value === "paper" ? paperKey(s.paper) : dayGroup(s.updatedAt)]);
+    const ordered = [...new Set(rows.map(groupId))].flatMap((key) => rows.filter((s) => groupId(s) === key));
     if (!rows.length) {
       setKids(list, h("div.vempty", null, icon("history"),
         h("div.vempty__t", null, needle ? "No chats match" : "No saved chats yet"),
@@ -146,11 +172,24 @@ export function historyView(host: PanelHost, o: { current(): string | null; back
       return;
     }
     const out: HTMLElement[] = [];
+    if (error) out.push(h("div.vwerr", { role: "alert" }, error));
     if (rows.some((s) => host.resumeCommand(s))) out.push(h("p.hist__note", null, icon("terminal"), "Paste a copied command in a terminal to continue that chat there. Don't run it in both places at once."));
     let group = "";
-    for (const s of rows) {
-      const g = dayGroup(s.updatedAt);
-      if (g !== group) { group = g; out.push(h("div.hist__group", null, g)); }
+    for (const s of ordered) {
+      const g = groupId(s);
+      if (g !== group) {
+        group = g;
+        out.push(h("div.hist__group", null, h("span", { "data-no-localize": true }, s.projectName || DEFAULT_PROJECT), " · ",
+          filter.value === "paper" ? h("span", { "data-no-localize": !!s.paper }, s.paper?.title || "General conversations") : dayGroup(s.updatedAt)));
+      }
+      if (editing === s.id) {
+        const input = h("input.input", { value: editingDraft, maxlength: "200", "aria-label": "Chat name", disabled: working, oninput: (e: Event) => { editingDraft = (e.target as HTMLInputElement).value; },
+          onkeydown: (e: KeyboardEvent) => { if (e.key === "Enter") { e.preventDefault(); void rename(s, input); } else if (e.key === "Escape") { e.stopPropagation(); editing = null; error = ""; paint(); } } }) as HTMLInputElement;
+        out.push(h("div.hrow.hrow--edit", null, input,
+          h("button.btn.btn--sm", { type: "button", disabled: working, onclick: () => void rename(s, input) }, "Save"),
+          h("button.btn.btn--sm", { type: "button", disabled: working, onclick: () => { editing = null; error = ""; paint(); } }, "Cancel")));
+        continue;
+      }
       const isCur = o.current() === s.id;
       if (confirming === s.id) {
         out.push(h("div.hrow.hrow--confirm", { role: "group", "aria-label": `Delete ${s.title}?` },
@@ -166,6 +205,8 @@ export function historyView(host: PanelHost, o: { current(): string | null; back
           h("span.hrow__t", null, s.title || "Untitled chat"),
           h("span.hrow__m", null, `${BACKEND_LABEL[s.backend] ?? s.backend} · ${relTime(s.updatedAt)}`),
           s.cwd ? h("span.hrow__f", { title: s.cwd }, icon("folder"), h("span", null, shortPath(s.cwd, 30))) : null),
+        h("button.iconbtn.iconbtn--sm", { type: "button", title: "Rename", "aria-label": `Rename ${s.title || "chat"}`, disabled: working, onclick: () => { editing = s.id; editingDraft = s.title; error = ""; paint(); (list.querySelector('input[aria-label="Chat name"],input[aria-label="对话名称"]') as HTMLInputElement | null)?.focus(); } }, icon("pencil")),
+        s.syncError || s.syncPending ? h("button.iconbtn.iconbtn--sm", { type: "button", title: s.syncError, "aria-label": s.syncPending ? "Refresh native project sync" : "Retry backend sync", disabled: working, onclick: () => void retrySync(s) }, icon(s.syncPending ? "history" : "warn")) : null,
         cmd ? h(`button.${done ? "lnk.hrow__copied" : "iconbtn.iconbtn.iconbtn--sm.hrow__cmd"}`, { type: "button", title: "Copy terminal command", "aria-label": done ? "Copied" : `Copy terminal command for ${s.title || "chat"}`, onclick: () => void copyCmd(s, cmd) }, icon(done ? "check" : "terminal"), done ? "Copied" : null) : null,
         h("button.iconbtn.iconbtn--sm.hrow__del", { type: "button", "aria-label": `Delete ${s.title || "chat"}`, title: "Delete", onclick: () => { confirming = s.id; paint(); } }, icon("trash"))));
     }
@@ -180,13 +221,21 @@ export function historyView(host: PanelHost, o: { current(): string | null; back
   };
   const refresh = () => {
     skeleton();
-    host.sessions().then((s) => { all = s; confirming = null; paint(); }, (e) => {
+    host.sessions().then((s) => {
+      all = s; confirming = null; paint();
+      for (const pending of s.filter(x => x.syncPending).slice(0, 5)) {
+        void host.syncSession(pending).then(updated => {
+          if (!all?.some(x => x.id === updated.id)) return;
+          replace(updated); if (!editing) paint();
+        }).catch(() => {});
+      }
+    }, (e) => {
       setKids(list, h("div.vempty", { role: "alert" }, icon("warn"), h("div.vempty__t", null, "Couldn't load your chats"), h("div.vempty__d", null, errMessage(e)),
         h("button.btn.btn--sm", { type: "button", onclick: refresh }, "Try again")));
     });
   };
   q.addEventListener("input", paint);
-  const el = frame("History", o.back, h("div.hist__search", null, q), list);
+  const el = frame("History", o.back, h("div.hist__search", null, q, filter), list);
   return { el, refresh };
 }
 

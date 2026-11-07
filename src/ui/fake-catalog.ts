@@ -5,6 +5,8 @@ import { DEFAULT_APPEARANCE } from "./appearance.ts";
 const level = (id: string, name: string, description?: string) => ({ id, name, ...(description ? { description } : {}) });
 
 export const CATALOGS: Record<BackendId, Catalog> = {
+  antigravity: { models: [level("account-model", "Account model")], modes: [], efforts: [level("low", "Low"), level("high", "High")], model: "account-model", effort: "high" },
+  "deepseek-harness": { models: [level("deepseek-official/deepseek-v4-pro", "DeepSeek (configured route)")], modes: [], efforts: [level("high", "High")], model: "deepseek-official/deepseek-v4-pro", effort: "high" },
   "claude-code": {
     models: [
       level("opus", "Claude Opus", "Most capable, slower"),
@@ -74,10 +76,11 @@ export function bigPiCatalog(): Catalog {
 export function defaultSettings(): PanelSettings {
   return {
     backend: "claude-code",
-    model: { "claude-code": "", codex: "", pi: "" },
-    mode: { "claude-code": "", codex: "", pi: "" },
-    effort: { "claude-code": "", codex: "", pi: "" },
-    auth: { "claude-code": "subscription", codex: "subscription", pi: "subscription" },
+    model: { "claude-code": "", codex: "", pi: "", antigravity: "", "deepseek-harness": "" },
+    mode: { "claude-code": "", codex: "", pi: "", antigravity: "", "deepseek-harness": "" },
+    effort: { "claude-code": "", codex: "", pi: "", antigravity: "", "deepseek-harness": "" },
+    auth: { "claude-code": "subscription", codex: "subscription", pi: "subscription", antigravity: "subscription", "deepseek-harness": "api-key" },
+    agentExecutables: {},
     prompts: [
       { id: "p1", title: "Detailed summary", text: "Write a detailed summary of this paper.", slot: 1 },
       { id: "p2", title: "Short summary", text: "Summarize this paper in five sentences.", slot: 2 },
@@ -85,8 +88,8 @@ export function defaultSettings(): PanelSettings {
       { id: "p4", title: "Compare key findings to other studies", text: "Compare the key findings to other studies in my library.", slot: 4 },
     ],
     followFocus: true, attachSelection: true, attachAreas: true,
-    enterToSend: true, showThinking: true, expandTools: false, showUsage: false, openAtStart: false, welcomed: true, chatFolder: "",
-    translate: true, translateTo: "en", translateModel: { "claude-code": "", codex: "", pi: "" },
+    enterToSend: true, showThinking: true, expandTools: false, showUsage: false, openAtStart: false, welcomed: true, chatFolder: "", projectName: "Zotero Agent", autoResumePaper: true,
+    translate: true, translateTo: "en", translateModel: { "claude-code": "", codex: "", pi: "", antigravity: "", "deepseek-harness": "" },
     appearance: { ...DEFAULT_APPEARANCE },
   };
 }

@@ -70,6 +70,7 @@ const rules: Rule[] = [
   [/^Edit (.+)$/, title => `编辑 ${title}`],
   [/^Delete (.+)\?$/, title => `删除 ${title}？`],
   [/^Delete (.+)$/, title => `删除 ${title}`],
+  [/^Rename (.+)$/, title => `重命名 ${title}`],
   [/^Copy terminal command for (.+)$/, title => `复制“${title}”的终端命令`],
   [/^Added (.+)\. Type \/(.+) in the message box to use it\.$/, (name, command) => `已添加 ${name}。在输入框输入 /${command} 即可使用。`],
   [/^Saved (.+)\.$/, name => `已保存 ${name}。`],
@@ -97,8 +98,8 @@ export function translateUI(value: string): string {
 
 function translateLabel(value: string): string {
   const match = /^(\s*)([\s\S]*?)(\s*)$/.exec(value)!;
-  const text = match[2]!;
-  const exact = Object.hasOwn(dictionary, text) ? dictionary[text] : undefined;
+  const text = match[2]!.replace(/\.{2}$/, ".");
+  const exact = Object.hasOwn(dictionary, text) ? dictionary[text] : Object.hasOwn(dictionary, text + ".") ? dictionary[text + "."] : undefined;
   if (exact) return match[1] + exact + match[3];
   if (!/[A-Za-z]/.test(text)) return value;
   for (const [pattern, render] of rules) {

@@ -12,9 +12,9 @@ test("model, mode and effort are saved per backend and never leak across backend
   await h.setSettings(setPerBackend(h.getSettings(), "mode", "claude-code", "plan"));
   await h.setSettings(setPerBackend(h.getSettings(), "effort", "codex", "high"));
   const s = h.getSettings();
-  assert.deepEqual(s.model, { "claude-code": "haiku", codex: "", pi: "" });
-  assert.deepEqual(s.mode, { "claude-code": "plan", codex: "", pi: "" });
-  assert.deepEqual(s.effort, { "claude-code": "", codex: "high", pi: "" });
+  assert.deepEqual(s.model, { ...defaultSettings().model, "claude-code": "haiku" });
+  assert.deepEqual(s.mode, { ...defaultSettings().mode, "claude-code": "plan" });
+  assert.deepEqual(s.effort, { ...defaultSettings().effort, codex: "high" });
 });
 
 test("effective() is the saved choice, else the catalog default, else empty", () => {
@@ -55,7 +55,7 @@ test("flags and sign-in mode patch only what they name", async () => {
   await h.setSettings(setAuth(h.getSettings(), "codex", "api-key"));
   const s = h.getSettings();
   assert.deepEqual([s.enterToSend, s.showThinking, s.expandTools, s.openAtStart, s.attachAreas, s.followFocus, s.attachSelection], [false, false, true, true, false, true, true]);
-  assert.deepEqual(s.auth, { "claude-code": "subscription", codex: "api-key", pi: "subscription" });
+  assert.deepEqual(s.auth, { ...defaultSettings().auth, codex: "api-key" });
 });
 
 test("prompt edits: add, edit and delete return new lists and keep the pins", () => {
@@ -98,17 +98,17 @@ test("the shortcut reference follows the platform and the send key", () => {
 
 test("chat folder: choose saves it, use default clears it, a cancelled picker changes nothing; about() reports the folder in use", async () => {
   const h = host();
-  assert.equal(h.about().workspace, "/Users/you/Documents/Zotero-Agent");
+  assert.equal(h.about().workspace, "/Users/you/Documents/Zotero-Agent/Zotero Agent");
   const picked = await h.chooseFolder(h.about().workspace);
   assert.ok(picked);
   await h.setSettings(setFolder(picked));
   assert.equal(h.getSettings().chatFolder, "/Users/you/Documents/Projects/hiring-audits/paper-notes");
-  assert.equal(h.about().workspace, picked);
+  assert.equal(h.about().workspace, `${picked}/Zotero Agent`);
   h.sim.pickFolder = null;
   assert.equal(await h.chooseFolder(), null);
   assert.equal(h.getSettings().chatFolder, picked);
   await h.setSettings(setFolder(""));
-  assert.equal(h.about().workspace, "/Users/you/Documents/Zotero-Agent");
+  assert.equal(h.about().workspace, "/Users/you/Documents/Zotero-Agent/Zotero Agent");
 });
 
 test("a path is shortened in the middle, keeping the start and the last folder", () => {
@@ -130,9 +130,9 @@ test("resume commands per backend, with the folder quoted for the shell", async 
 
 test("prepareSession takes the saved chat's folder, else the setting", async () => {
   const h = host();
-  assert.equal((await h.prepareSession()).cwd, "/Users/you/Documents/Zotero-Agent");
+  assert.equal((await h.prepareSession()).cwd, "/Users/you/Documents/Zotero-Agent/Zotero Agent");
   assert.equal((await h.prepareSession("/some/old/folder")).cwd, "/some/old/folder");
   await h.setSettings(setFolder("/new/folder"));
-  assert.equal((await h.prepareSession()).cwd, "/new/folder");
+  assert.equal((await h.prepareSession()).cwd, "/new/folder/Zotero Agent");
   assert.deepEqual(h.sim.preparedCwd, [undefined, "/some/old/folder", undefined]);
 });

@@ -301,7 +301,12 @@ const BASE = `
 .zmc .vw__head { flex: none; display: flex; align-items: center; gap: var(--s1); padding: var(--s2) var(--s4) 0 var(--s2); }
 .zmc .vw__t { font-size: var(--fs-5); }
 .zmc .vw__body { flex: 1; min-height: 0; overflow-y: auto; padding: var(--s1) var(--s4) var(--s5); overscroll-behavior: contain; }
-.zmc .hist__search { position: sticky; top: 0; z-index: 2; padding: var(--s2) 0; background: var(--paper); }
+.zmc .hist__search { position: sticky; top: 0; z-index: 2; padding: var(--s2) 0; background: var(--paper); display: flex; gap: var(--s2); }
+.zmc .hist__search input { min-width: 0; flex: 1; }
+.zmc .hist__search select { width: auto; max-width: 45%; }
+.zmc .hist__group { overflow-wrap: anywhere; text-transform: none; }
+.zmc .hrow--edit { padding: var(--s2); gap: var(--s1); }
+.zmc .hrow--edit input { min-width: 0; flex: 1; }
 .zmc .hist__group { padding: var(--s4) var(--s1) var(--s1); }
 .zmc .hrow { display: flex; align-items: center; gap: 2px; padding-right: var(--s2); border-radius: var(--r1); }
 .zmc .hrow:hover, .zmc .hrow:focus-within { background: var(--tint-hover); }
@@ -384,4 +389,7 @@ const BASE = `
 .zmc .set__saved span:empty { display: none; }
 `;
 
-export const STYLES = BASE + CHAT_STYLES + THINK_STYLES + WELCOME_STYLES + CONTEXT_STYLES + SKILL_STYLES + LOOK_STYLES;
+export const STYLES = BASE + CHAT_STYLES + THINK_STYLES + WELCOME_STYLES + CONTEXT_STYLES + SKILL_STYLES + LOOK_STYLES + `
+.zmc .seg--agents { flex-wrap: wrap; }
+.zmc .seg--agents .seg__opt { flex: 1 1 30%; white-space: normal; }
+`;

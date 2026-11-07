@@ -1,7 +1,10 @@
-Unofficial Zotero Agent Simplified Chinese derivative, version 0.15.2.3.
-Complete corresponding source and build instructions:
-https://github.com/SchallyHsu/zotero-agent-zh-CN
-Release source tag: zh-CN-v0.15.2.3
+Unofficial Zotero Agent Simplified Chinese derivative, version 0.15.2.9.
+Complete corresponding source is distributed alongside this XPI as:
+zotero-agent-zh-CN-0.15.2.9-source.zip
+Build instructions are in README.md in that source archive.
+Repository: https://github.com/SchallyHsu/zotero-agent-zh-CN
+Source tag: https://github.com/SchallyHsu/zotero-agent-zh-CN/tree/zh-CN-v0.15.2.9
+Release: https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.9
 License: AGPL-3.0-or-later (LICENSE). See NOTICE.md and THIRD_PARTY_NOTICES.md.
 Original source: https://github.com/54yyyu/zotero-mcp/tree/v0.15.2/plugin
 Original commit: dfec70c8b772e697476e0b42c1264441cf518686

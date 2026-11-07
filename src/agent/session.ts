@@ -133,6 +133,7 @@ function isEmptyInput(v: unknown): boolean {
 function readOptions(list: unknown, skipDefault: boolean): ModelOption[] {
   const out: ModelOption[] = [];
   for (const o of objs(list)) {
+    if (Array.isArray(o["options"])) { out.push(...readOptions(o["options"], skipDefault)); continue; }
     const id = str(o["value"]) ?? str(o["modelId"]) ?? str(o["id"]);
     if (!id || (skipDefault && id === "default")) continue;
     out.push({ id, name: str(o["name"]) ?? id, ...(str(o["description"]) ? { description: str(o["description"])! } : {}) });
@@ -309,7 +310,7 @@ export class AcpAgentSession implements AgentSession {
       if (opts.resumeSessionId) {
         // Replayed history arrives as session/update notifications before this resolves; no turn is
         // running, so none of it is emitted.
-        res = asObj(await client.request("session/load", { sessionId: opts.resumeSessionId, cwd: opts.cwd, mcpServers: [], ...meta })) ?? {};
+        res = asObj(await client.request(spec.resumeVia ?? "session/load", { sessionId: opts.resumeSessionId, cwd: opts.cwd, mcpServers: [], ...meta })) ?? {};
         sessionId = opts.resumeSessionId;
       } else {
         res = asObj(await client.request("session/new", { cwd: opts.cwd, mcpServers: [], ...meta })) ?? {};
@@ -317,7 +318,7 @@ export class AcpAgentSession implements AgentSession {
         if (!id) throw new Error("the agent did not return a sessionId from session/new");
         sessionId = id;
       }
-      const session = new AcpAgentSession(client, spec, sessionId, init, readCatalog(res, spec), spec.briefVia === "first-prompt" && !opts.resumeSessionId ? opts.brief : undefined);
+      const session = new AcpAgentSession(client, spec, sessionId, init, readCatalog(res, spec), spec.briefVia === "first-prompt" && (!opts.resumeSessionId || opts.freshNativeSession) ? opts.brief : undefined);
       session.#banner = str(asObj(asObj(res["_meta"])?.["piAcp"])?.["startupInfo"]);
       // A resumed session reports the model it had, not the agent's default.
       if (!opts.resumeSessionId) session.#defaultModel = session.currentModel();
@@ -589,8 +590,10 @@ export class AcpAgentSession implements AgentSession {
   }
 
   async close(): Promise<void> {
+    if (this.#closed) return;
     this.#closed = true;
     this.#cancelPending();
+    if (this.#spec.closeSession) await this.#client.request("session/close", { sessionId: this.sessionId }, 5000).catch(() => {});
     await this.#client.close();
   }
 

@@ -20,7 +20,7 @@ export interface Panel {
   dispose(): void;
 }
 
-export function createPanel(opts: { id: string; version: string; win: any; dataDir: string; shadow: ShadowRoot }): Panel {
+export function createPanel(opts: { id: string; version: string; rootURI?: string; win: any; dataDir: string; shadow: ShadowRoot }): Panel {
   const bundle = createHost(opts);
   const api = mountPanel(opts.shadow, bundle.host);
   // Focus in the composer: a message is coming, so the open paper's text is prepared now, not when it is sent.
@@ -36,7 +36,7 @@ export function createPanel(opts: { id: string; version: string; win: any; dataD
  */
 export function createSettingsPane(opts: { version: string; win: any; dataDir: string; root: HTMLElement; known(b: BackendId): Catalog | undefined }): { dispose(): void } {
   const sh = createSettingsHost(opts);
-  const own = createRuntime({ spawner: createGeckoSpawner(), bridgeDir: PathUtils.join(opts.dataDir, "bridges") });
+  const own = createRuntime({ spawner: createGeckoSpawner(), bridgeDir: PathUtils.join(opts.dataDir, "bridges"), executable: (b) => sh.settings().agentExecutables?.[b] });
   const runtime = { detect: () => own.detect(), catalog: (b: BackendId) => { const k = opts.known(b); return k ? Promise.resolve(k) : own.catalog(b); } };
   const ui = mountSettings(opts.root.shadowRoot ?? opts.root.attachShadow({ mode: "open" }), { ...sh.host, runtime }, (b) => !!opts.known(b));
   return { dispose() { ui.dispose(); sh.dispose(); } };

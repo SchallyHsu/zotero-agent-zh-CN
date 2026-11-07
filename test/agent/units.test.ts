@@ -228,7 +228,7 @@ describe("detect()", () => {
   it("no node: every backend is unavailable with the same explanation", async () => {
     const rt = createRuntime({ spawner: hermeticSpawner({ PATH: "/nonexistent" }), bridgeDir: tempDir() });
     const all = await rt.detect();
-    assert.equal(all.length, 3);
+    assert.equal(all.length, 5);
     assert.ok(all.every((s) => !s.available && /node was not found/.test(s.reason!)));
   });
 

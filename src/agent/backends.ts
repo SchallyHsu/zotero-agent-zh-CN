@@ -17,7 +17,7 @@
 //                            `modes` are pi's thinking levels, NOT permissions (ignored here);
 //                            session/set_config_option works. No permission frames at all.
 import type { BackendId, Spawner } from "../types.ts";
-import { findBinary } from "./env.ts";
+import { findBinary, nodeEval } from "./env.ts";
 
 export interface BackendSpec {
   id: BackendId;
@@ -25,6 +25,10 @@ export interface BackendSpec {
   /** npm package of the ACP bridge, and the version we pin (checked with `npm view`). */
   pkg: string;
   version: string;
+  /** Native ACP CLIs do not need an npm bridge. */
+  directArgs?: string[];
+  resumeVia?: "session/resume";
+  closeSession?: boolean;
   /** The CLI the user must have on their login PATH, when the backend needs one. */
   cli?: { name: string; hint: string };
   /** How the model is chosen after session/new: a config option, or session/set_model. */
@@ -91,9 +95,26 @@ export const BACKENDS: Record<BackendId, BackendSpec> = {
     compacts: false,
     resume: (id) => `pi --session ${id}`,
   },
+  antigravity: {
+    id: "antigravity", label: "Antigravity", pkg: "", version: "native",
+    cli: { name: "agy", hint: "Install Antigravity CLI, run `agy acp --login`, and confirm `agy acp --help` works. You can set its executable path in Settings." },
+    directArgs: ["acp"], resumeVia: "session/resume", closeSession: true,
+    modelVia: "config_option", effortVia: "config_option", apiKeyVars: ["GEMINI_API_KEY", "GOOGLE_API_KEY"],
+    permissionModes: true, briefVia: "first-prompt", claudeMeta: false, compacts: false,
+    resume: (id) => `agy --conversation ${id}`,
+  },
+  "deepseek-harness": {
+    id: "deepseek-harness", label: "DeepSeek Harness", pkg: "", version: "native",
+    cli: { name: "dsh", hint: "Install DeepSeek Harness (`npm i -g @deepseek-ai/dsh`), configure its provider in `dsh web`, and confirm `dsh --profile acp` works. Node.js 24.9+ is required." },
+    directArgs: ["--profile", "acp"], resumeVia: "session/resume", closeSession: true,
+    modelVia: "config_option", effortVia: "config_option", apiKeyVars: [],
+    permissionModes: false, briefVia: "first-prompt", claudeMeta: false, compacts: false,
+    // ACP sessions resume inside the panel; no guessed terminal resume command.
+    resume: () => "",
+  },
 };
 
-export const BACKEND_IDS: BackendId[] = ["claude-code", "codex", "pi"];
+export const BACKEND_IDS: BackendId[] = ["claude-code", "codex", "pi", "antigravity", "deepseek-harness"];
 
 export function backendOf(id: BackendId): BackendSpec {
   const b = BACKENDS[id];
@@ -134,14 +155,26 @@ export async function probeLogin(spawner: Spawner, env: Record<string, string>, 
 }
 
 /** The backend's own CLI (`claude` also from ~/.local/bin, where its installer puts it): the user's, which may be newer than the SDK the bridge bundles. */
-export async function findCli(spawner: Spawner, env: Record<string, string>, spec: BackendSpec): Promise<string | null> {
+export async function findCli(spawner: Spawner, env: Record<string, string>, spec: BackendSpec, executable?: string): Promise<string | null> {
   if (!spec.cli) return null;
+  const selected = executable?.trim();
+  // where.exe treats a drive colon as its path:pattern syntax, so absolute Windows
+  // paths must be checked directly rather than sent through PATH lookup.
+  if (selected && /[\\/]/.test(selected)) {
+    if (spawner.windows && !/\.(exe|cmd|bat|com)$/i.test(selected)) return null;
+    try {
+      const r = await nodeEval(spawner, env, 'const fs=require("fs"),path=require("path");const p=path.resolve(process.argv[1]);if(!fs.statSync(p).isFile())process.exit(1);fs.accessSync(p,process.platform==="win32"?fs.constants.F_OK:fs.constants.X_OK);console.log(p)', selected);
+      return r.code === 0 ? r.stdout.trim().split(/\r?\n/).pop() || null : null;
+    } catch { return null; }
+  }
   const home = env["HOME"];
-  return findBinary(spawner, env, spec.cli.name, spec.id === "claude-code" && home ? [`${home}/.local/bin`] : []);
+  return findBinary(spawner, env, selected || spec.cli.name, spec.id === "claude-code" && home ? [`${home}/.local/bin`] : []);
 }
 
 /** `cd "<folder>" && <resume command>`: what to paste in a terminal to continue a chat started in the panel. */
-export function resumeCommand(backend: BackendId, cwd: string, sessionId: string): string {
+export function resumeCommand(backend: BackendId, cwd: string, sessionId: string): string | null {
+  const command = BACKENDS[backend].resume(sessionId);
+  if (!command || !sessionId) return null;
   const quoted = `'${cwd.replace(/'/g, `'\\''`)}'`;
-  return `cd ${quoted} && ${BACKENDS[backend].resume(sessionId)}`;
+  return `cd ${quoted} && ${command}`;
 }

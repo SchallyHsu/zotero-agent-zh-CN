@@ -13,6 +13,7 @@ export interface RuntimeOpts {
   bridgeDir: string;
   /** Use this `node` instead of the one on the login PATH. */
   nodePath?: string;
+  executable?: (backend: BackendId) => string | undefined;
   /** Bound on the handshake requests (ms). Default 30 000. */
   initTimeoutMs?: number;
   /** Progress text while a bridge installs ("Installing @agentclientprotocol/claude-agent-acp@0.85.1…"). */
@@ -36,6 +37,7 @@ export const CATALOG_CLEANUP = 'real=$(cd "$1" && pwd -P); d="$HOME/.claude/proj
  * keeps no session. (codex-acp cannot make a thread ephemeral: Codex keeps its usual session file.)
  */
 async function lockedEnv(spawner: Spawner, env: Record<string, string>, spec: BackendSpec, { cwd, model }: StartOpts): Promise<Record<string, string>> {
+  if (spec.directArgs) throw new Error(`${spec.label} does not expose a verified tool-free translation mode. Chat is supported; use Claude Code or Codex for the reader translator.`);
   if (spec.id === "claude-code") return { MAX_THINKING_TOKENS: "0", ...(model ? { ANTHROPIC_MODEL: model } : {}) };
   if (spec.id === "codex") return { CODEX_CONFIG: JSON.stringify({ sandbox_mode: "read-only", approval_policy: "never", web_search: "disabled" }) };
   if (spawner.windows) throw new Error("Translating with pi is not available on Windows yet. Choose another agent for translation.");
@@ -56,7 +58,7 @@ export function createRuntime(opts: RuntimeOpts): AgentRuntime {
     return opts.nodePath ?? (await findBinary(spawner, env, "node"));
   }
 
-  const catalogs = new Map<BackendId, Promise<Catalog>>();
+  const catalogs = new Map<string, Promise<Catalog>>();
 
   /** A short-lived session in a temp workspace, read and closed. Nothing is left running; Claude is asked not to keep the session, the others cannot be. */
   async function probeCatalog(id: BackendId): Promise<Catalog> {
@@ -90,13 +92,14 @@ export function createRuntime(opts: RuntimeOpts): AgentRuntime {
 
   const runtime: AgentRuntime = {
     catalog(id: BackendId): Promise<Catalog> {
-      let p = catalogs.get(id);
+      const key = `${id}\0${opts.executable?.(id) ?? ""}`;
+      let p = catalogs.get(key);
       if (!p) {
         p = probeCatalog(id);
-        catalogs.set(id, p);
+        catalogs.set(key, p);
         // A failure is not remembered: the next call tries again.
         p.catch(() => {
-          if (catalogs.get(id) === p) catalogs.delete(id);
+          if (catalogs.get(key) === p) catalogs.delete(key);
         });
       }
       return p;
@@ -112,8 +115,9 @@ export function createRuntime(opts: RuntimeOpts): AgentRuntime {
           const spec = backendOf(id);
           const base = { id, label: spec.label };
           if (!node) return { ...base, available: false, reason: NODE_MISSING };
-          const cli = await findCli(spawner, env, spec);
+          const cli = await findCli(spawner, env, spec, opts.executable?.(id));
           if (spec.cli && !cli) return { ...base, available: false, reason: spec.cli.hint };
+          if (spec.directArgs) return { ...base, available: true };
           const installed = await locateBridge(spawner, nodeEnv, node, bridgeDir, spec).catch(() => null);
           if (!installed && !npm) return { ...base, available: false, reason: `npm was not found, so the ${spec.label} bridge cannot be installed. Install Node.js (it includes npm).` };
           const login = cli ? await probeLogin(spawner, env, id, cli) : {};
@@ -130,6 +134,16 @@ export function createRuntime(opts: RuntimeOpts): AgentRuntime {
       const env = (start.path ?? []).reduceRight((e, dir) => withPathFirst(e, dir), keyed);
       const node = await resolveNode(env);
       if (!node) throw new Error(NODE_MISSING);
+      if (spec.directArgs) {
+        const cli = await findCli(spawner, env, spec, opts.executable?.(spec.id));
+        if (!cli) throw new Error(spec.cli!.hint);
+        if (start.locked) await lockedEnv(spawner, env, spec, start);
+        const args = spec.id === "antigravity" && start.antigravityStorage
+          ? [...spec.directArgs, "--gemini-dir", start.antigravityStorage.geminiDir, "--app-data-dir", "antigravity"] : spec.directArgs;
+        const client = await AcpClient.spawn({ spawner, command: cli, args, cwd: start.cwd,
+          env: bridgeEnv(env, { node, extra: start.env }), ...(opts.initTimeoutMs !== undefined ? { initTimeoutMs: opts.initTimeoutMs } : {}) });
+        return AcpAgentSession.open(client, spec, start);
+      }
       const [bridge, claude] = await Promise.all([
         ensureBridge({ spawner, env, node, bridgeDir, spec, ...(opts.onProgress ? { onProgress: opts.onProgress } : {}) }),
         spec.claudeMeta ? findCli(spawner, withPathFirst(env, dirnameOf(node)), spec) : null,

@@ -9,7 +9,7 @@ export const DEFAULT_PROMPTS: PromptEntry[] = [
   { id: "compare", slot: 4, title: "Compare key findings to other studies", text: "Compare this paper's key findings with related studies in my library, and with recent work outside it. Cite everything." },
 ];
 
-const each = <T>(v: T): Record<BackendId, T> => ({ "claude-code": v, codex: v, pi: v });
+const each = <T>(v: T): Record<BackendId, T> => ({ "claude-code": v, codex: v, pi: v, antigravity: v, "deepseek-harness": v });
 
 export const DEFAULT_SETTINGS: PanelSettings = {
   backend: "claude-code",
@@ -17,7 +17,8 @@ export const DEFAULT_SETTINGS: PanelSettings = {
   model: each(""),
   mode: each(""),
   effort: each(""),
-  auth: { "claude-code": "subscription", codex: "subscription", pi: "api-key" },
+  auth: { "claude-code": "subscription", codex: "subscription", pi: "api-key", antigravity: "subscription", "deepseek-harness": "api-key" },
+  agentExecutables: {},
   prompts: DEFAULT_PROMPTS,
   skills: {},
   followFocus: true,
@@ -30,6 +31,8 @@ export const DEFAULT_SETTINGS: PanelSettings = {
   openAtStart: false,
   welcomed: false,
   chatFolder: "",
+  projectName: "Zotero Agent",
+  autoResumePaper: true,
   translate: true,
   translateTo: "en", // withDefaults puts Zotero's own language here
   translateModel: each(""),
@@ -45,6 +48,8 @@ export function withDefaults(saved: Partial<PanelSettings>, locale?: string): Pa
   const d = DEFAULT_SETTINGS;
   return {
     ...d, ...saved,
+    projectName: typeof saved.projectName === "string" && saved.projectName.trim() ? saved.projectName.trim().slice(0, 120) : d.projectName,
+    autoResumePaper: typeof saved.autoResumePaper === "boolean" ? saved.autoResumePaper : true,
     model: { ...d.model, ...saved.model }, mode: { ...d.mode, ...saved.mode },
     effort: { ...d.effort, ...saved.effort }, auth: { ...d.auth, ...saved.auth },
     skills: saved.skills && typeof saved.skills === "object" ? saved.skills : {},

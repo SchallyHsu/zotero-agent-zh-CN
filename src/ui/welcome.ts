@@ -10,6 +10,8 @@ const ABOUT: Record<BackendId, { sub: string; signIn: string }> = {
   "claude-code": { sub: "Anthropic. Uses your Claude subscription.", signIn: "Run `claude` in a terminal and sign in with /login." },
   codex: { sub: "OpenAI. Uses your ChatGPT plan.", signIn: "Run `codex login` in a terminal." },
   pi: { sub: "Open source. Local models or your own provider keys.", signIn: "Run `pi` in a terminal and add a provider with /login." },
+  antigravity: { sub: "Google. Uses Antigravity CLI through ACP.", signIn: "Install Antigravity CLI and run `agy acp --login`." },
+  "deepseek-harness": { sub: "DeepSeek's native harness through ACP.", signIn: "Install DeepSeek Harness and configure its provider in `dsh web`." },
 };
 
 /** A tick that draws itself (the stroke grows from nothing). */

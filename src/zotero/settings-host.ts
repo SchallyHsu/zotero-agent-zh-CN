@@ -8,6 +8,7 @@ import { createSkills } from "./skills.ts";
 import * as keychain from "./keychain.ts";
 import { PREFIX, prefs } from "./settings.ts";
 import { createStore } from "./store.ts";
+import { projectFolderName } from "../ui/session-model.ts";
 
 export function createSettingsHost(opts: { version: string; win: any; dataDir: string }) {
   const { win, dataDir } = opts;
@@ -21,7 +22,7 @@ export function createSettingsHost(opts: { version: string; win: any; dataDir: s
     const docs = home.clone(); docs.append("Documents");
     return PathUtils.join(docs.exists() ? docs.path : home.path, "Zotero-Agent");
   };
-  const chatFolder = () => settings().chatFolder || defaultFolder();
+  const chatFolder = () => PathUtils.join(settings().chatFolder || defaultFolder(), projectFolderName(settings().projectName));
   const store = createStore(PathUtils.join(dataDir, "sessions"));
   const images = createImages(win, dataDir);
   const skills = createSkills({ dataDir, win, defaultFolder });

@@ -49,7 +49,7 @@ class ChatPlugin {
   }
 
   private loadPanel(win: any, shadow: ShadowRoot): Panel {
-    return this.module().createPanel({ id: this.init.id, version: this.init.version, win, dataDir: PathUtils.join(Zotero.Profile.dir, "zotero-chat"), shadow });
+    return this.module().createPanel({ id: this.init.id, version: this.init.version, rootURI: this.init.rootURI, win, dataDir: PathUtils.join(Zotero.Profile.dir, "zotero-chat"), shadow });
   }
 
   /**

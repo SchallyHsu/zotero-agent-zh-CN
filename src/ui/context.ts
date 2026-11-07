@@ -50,5 +50,11 @@ export class ChipState {
   clearAdded(): void { this.added = this.added.filter((x) => x.pinned); }
 
   /** A new chat starts clean, pinned or not. */
-  clearAll(): void { this.added = []; }
+  clearAll(): void { this.added = []; this.pinned.clear(); this.dismissed.clear(); }
+
+  draft(): { added: ContextChip[]; pinned: ContextChip[] } { return { added: [...this.added], pinned: [...this.pinned.values()] }; }
+  restoreDraft(draft?: { added: ContextChip[]; pinned: ContextChip[] }): void {
+    this.clearAll();
+    if (draft) { this.added = [...draft.added]; this.pinned = new Map(draft.pinned.map((c) => [c.id, c])); }
+  }
 }
