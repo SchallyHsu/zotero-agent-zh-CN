@@ -48,7 +48,10 @@ export function appearanceCard(host: SettingsHost, look: Look, save: (patch: Par
       ...BACKGROUNDS.map((b) => ({ id: b.id, label: b.name, mod: b.id })),
       ...(a.image ? [{ id: "image", label: `Your picture (${a.image})`, mod: "image" }] : []),
     ];
+    const langSeg = seg("Language", [{ id: "zh-CN", label: "中文" }, { id: "en", label: "English" }], a.language ?? "zh-CN", (id) => void save({ language: id as Appearance["language"] }));
+    for (const b of langSeg.querySelectorAll("button")) b.setAttribute("data-no-localize", "");
     return section("Appearance", "How the panel looks. Changes show as you make them.",
+      row("Language", langSeg),
       switchRow("Glass", "Frosted, translucent cards and menus.", a.glass, (on) => void save({ glass: on })),
       row("Accent colour",
         swatches("Accent colour", "sw", ACCENTS.map((c) => ({ id: c.id, label: c.name, style: `--cl:${c.light};--cd:${c.dark}`, mod: c.id ? undefined : "mono" })), custom ? "custom" : a.accent, (id) => void save({ accent: id }),

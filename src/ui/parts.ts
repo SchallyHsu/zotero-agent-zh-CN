@@ -6,7 +6,7 @@ import type { AssistantMessage, Block, PlanEntry } from "./transcript.ts";
 import { MdView, pretty } from "./mdview.ts";
 import { h, icon, setKids, unwrapTicks } from "./dom.ts";
 import { stepTitle } from "./steptitle.ts";
-import { translateUI } from "./localize.ts";
+import { getUiLanguage, translateUI } from "./localize.ts";
 import type { IconName } from "./dom.ts";
 
 export interface MsgActions {
@@ -81,7 +81,7 @@ export const dots = (): HTMLElement => h("span.dm", { "aria-hidden": "true" }, A
 
 /** `el` says `text`, one span per letter, so a glint can run across it by opacity alone (the whole label within 1.6 s). */
 export function glint(el: HTMLElement, text: string): void {
-  text = translateUI(text);
+  text = getUiLanguage(el) === "en" ? text : translateUI(text);
   if (el.dataset.t === text) return;
   el.dataset.t = text;
   const chars = [...text];

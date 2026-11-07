@@ -82,8 +82,9 @@ export function createPopupTranslate(t: Translator, o: { settings(): PanelSettin
     if (shown?.box === box) return close(shown);
     if (shown) close(shown);
     const doc: Document = event.doc;
+    const en = o.settings().appearance.language === "en";
     if (!doc.getElementById("zmc-tr-css")) doc.head.append(Object.assign(doc.createElement("style"), { id: "zmc-tr-css", textContent: CSS }));
-    const el = node(doc, "div", "zmc-tr", { role: "region", "aria-label": "翻译结果" });
+    const el = node(doc, "div", "zmc-tr", { role: "region", "aria-label": en ? "Translation" : "翻译结果" });
     // The panel's accent; Mono is a quiet ink line.
     el.style.setProperty("--zmc-tr-accent", o.settings().appearance.accent || "color-mix(in srgb, var(--fill-primary) 32%, transparent)");
     const s: Shown = { text: String(event.params.annotation.text), reader: event.reader, box, el, popup: null, button, closed: false };
@@ -105,16 +106,17 @@ export function createPopupTranslate(t: Translator, o: { settings(): PanelSettin
 
   function run(s: Shown, source: string, to: string): void {
     const doc = s.el.ownerDocument;
+    const en = o.settings().appearance.language === "en";
     const { text: request, truncated } = translationRequest(source);
     const out = node(doc, "div", "zmc-tr__text", { lang: to, dir: "auto", tabindex: "0" });
-    const sk = node(doc, "div", "zmc-tr__sk", { "aria-label": "正在翻译" }, node(doc, "i"), node(doc, "i"));
+    const sk = node(doc, "div", "zmc-tr__sk", { "aria-label": en ? "Translating" : "正在翻译" }, node(doc, "i"), node(doc, "i"));
     const scroll = node(doc, "div", "zmc-tr__scroll", null, sk, out);
-    const select = node(doc, "select", "", { "aria-label": "目标语言" }, ...LANGUAGES.map((l) => node(doc, "option", "", { value: l.id }, l.label))) as HTMLSelectElement;
+    const select = node(doc, "select", "", { "aria-label": en ? "Translate into" : "目标语言" }, ...LANGUAGES.map((l) => node(doc, "option", "", { value: l.id }, l.label))) as HTMLSelectElement;
     select.value = to;
     const chip = node(doc, "label", "zmc-tr__lang", null, node(doc, "span", "", null, language(to).label), icon(doc, ICON.chevron), select);
     select.addEventListener("change", () => run(s, source, select.value)); // this popup only; the setting stays
-    const copy = node(doc, "button", "zmc-tr__act", { type: "button", title: "复制译文", hidden: "" }, icon(doc, ICON.copy), "复制") as HTMLButtonElement;
-    const note = node(doc, "span", "zmc-tr__note", null, truncated ? "仅处理前 6,000 个字符" : "");
+    const copy = node(doc, "button", "zmc-tr__act", { type: "button", title: en ? "Copy the translation" : "复制译文", hidden: "" }, icon(doc, ICON.copy), en ? "Copy" : "复制") as HTMLButtonElement;
+    const note = node(doc, "span", "zmc-tr__note", null, truncated ? (en ? "First 6,000 characters" : "仅处理前 6,000 个字符") : "");
     s.el.replaceChildren(node(doc, "div", "zmc-tr__body", null, scroll), node(doc, "div", "zmc-tr__foot", null, chip, note, copy));
     s.el.setAttribute("aria-busy", "true");
     scroll.addEventListener("scroll", () => fade(scroll), { passive: true });
@@ -122,8 +124,8 @@ export function createPopupTranslate(t: Translator, o: { settings(): PanelSettin
     let all = "";
     copy.addEventListener("click", () => {
       o.copy(all.trim());
-      copy.replaceChildren(icon(doc, ICON.check), "已复制");
-      doc.defaultView!.setTimeout(() => copy.replaceChildren(icon(doc, ICON.copy), "复制"), 1400);
+      copy.replaceChildren(icon(doc, ICON.check), en ? "Copied" : "已复制");
+      doc.defaultView!.setTimeout(() => copy.replaceChildren(icon(doc, ICON.copy), en ? "Copy" : "复制"), 1400);
     });
     const gone = () => s.closed || !s.el.isConnected;
     t.translate({
@@ -150,8 +152,8 @@ export function createPopupTranslate(t: Translator, o: { settings(): PanelSettin
         sk.remove();
         out.remove();
         s.el.removeAttribute("aria-busy");
-        scroll.append(node(doc, "div", "zmc-tr__err", { role: "alert" }, node(doc, "b", "", null, "翻译失败"), e instanceof Error ? e.message : String(e)));
-        const retry = node(doc, "button", "zmc-tr__act", { type: "button" }, "重试");
+        scroll.append(node(doc, "div", "zmc-tr__err", { role: "alert" }, node(doc, "b", "", null, en ? "Couldn't translate" : "翻译失败"), e instanceof Error ? e.message : String(e)));
+        const retry = node(doc, "button", "zmc-tr__act", { type: "button" }, en ? "Try again" : "重试");
         retry.addEventListener("click", () => run(s, source, select.value));
         copy.replaceWith(retry);
       },

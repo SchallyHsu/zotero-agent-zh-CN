@@ -11,8 +11,9 @@ test("a missing or broken appearance reads as the default: glass on, mono, no ba
 });
 
 test("each field is checked on its own: one bad value never resets the others", () => {
-  const a = readAppearance({ glass: "yes", accent: "#2563C9", background: "dawn", imageVisibility: 250, imageBlur: -4, textSize: "huge", density: "compact" });
-  assert.deepEqual(a, { ...DEFAULT_APPEARANCE, accent: "#2563c9", background: "dawn", imageVisibility: 100, imageBlur: 0, density: "compact" });
+  const a = readAppearance({ language: "en", glass: "yes", accent: "#2563C9", background: "dawn", imageVisibility: 250, imageBlur: -4, textSize: "huge", density: "compact" });
+  assert.deepEqual(a, { ...DEFAULT_APPEARANCE, language: "en", accent: "#2563c9", background: "dawn", imageVisibility: 100, imageBlur: 0, density: "compact" });
+  assert.equal(readAppearance({ language: "fr" }).language, "zh-CN");
   assert.equal(readAppearance({ imageVisibility: 33.6 }).imageVisibility, 34);
   assert.equal(readAppearance({ imageVisibility: Number.NaN }).imageVisibility, DEFAULT_APPEARANCE.imageVisibility);
   assert.equal(readAppearance({ glass: false }).glass, false);

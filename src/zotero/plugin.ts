@@ -95,13 +95,14 @@ class ChatPlugin {
    * appears in this popup, under the button.
    */
   private onSelectionPopup = (event: any): void => {
-    if (!event.params?.annotation?.text?.trim() || prefs.json<{ translate?: boolean }>("settings", {}).translate === false) return;
+    const saved = prefs.json<{ translate?: boolean; appearance?: { language?: string } }>("settings", {});
+    if (!event.params?.annotation?.text?.trim() || saved.translate === false) return;
     const box = event.doc.createElement("div");
     const b = event.doc.createElement("button");
     b.className = "toolbar-button wide-button";
     b.setAttribute("data-tabstop", "1");
     b.setAttribute("aria-expanded", "false");
-    b.textContent = "翻译";
+    b.textContent = saved.appearance?.language === "en" ? "Translate" : "翻译";
     b.addEventListener("click", () => this.translator().toggle(event, box, b));
     box.append(b);
     event.append(box);

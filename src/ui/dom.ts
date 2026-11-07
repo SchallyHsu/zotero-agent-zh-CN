@@ -3,6 +3,8 @@
 // mount point (`initEnv`), not from globals: a plugin script in a Zotero window may not have `document`
 // or `setTimeout` as free variables.
 
+import { getUiLanguage } from "./localize.ts";
+
 const XHTML = "http://www.w3.org/1999/xhtml";
 const SVG = "http://www.w3.org/2000/svg";
 
@@ -158,7 +160,7 @@ export function relTime(ms: number, now = Date.now()): string {
   if (hr < 24) return `${hr} h ago`;
   const d = Math.round(hr / 24);
   if (d < 7) return `${d} d ago`;
-  return new Date(ms).toLocaleDateString("zh-CN", { month: "short", day: "numeric" });
+  return new Date(ms).toLocaleDateString(getUiLanguage() === "en" ? "en-US" : "zh-CN", { month: "short", day: "numeric" });
 }
 
 /** Today / Yesterday / This week / "September" / "September 2025": the history's groups. */
@@ -169,7 +171,7 @@ export function dayGroup(ms: number, now = new Date()): string {
   if (days <= 0) return "Today";
   if (days === 1) return "Yesterday";
   if (days < 7) return "This week";
-  return d.toLocaleDateString("zh-CN", { month: "long", ...(d.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }) });
+  return d.toLocaleDateString(getUiLanguage() === "en" ? "en-US" : "zh-CN", { month: "long", ...(d.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }) });
 }
 
 export async function copyText(text: string): Promise<boolean> {

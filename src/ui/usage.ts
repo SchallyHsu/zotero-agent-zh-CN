@@ -5,6 +5,34 @@ import type { AccountUsage, BackendId } from "../types.ts";
 import type { TranscriptState } from "./transcript.ts";
 import { conversationUsage } from "./usage-model.ts";
 import { env, fmtTokens, h, setKids, svg } from "./dom.ts";
+import { getUiLanguage } from "./localize.ts";
+
+function enQuotaText(s: string): string {
+  return s
+    .replace(/(\d+)\s*小时/g, "$1h")
+    .replace(/(\d+)\s*天/g, "$1d")
+    .replace(/(\d+)\s*分钟/g, "$1m")
+    .replace(/主要额度/g, "Primary")
+    .replace(/次要额度/g, "Secondary")
+    .replace(/OAuth 应用/g, "OAuth apps")
+    .replace(/高级请求/g, "Premium requests")
+    .replace(/代码补全/g, "Completions")
+    .replace(/聊天/g, "Chat")
+    .replace(/模型额度/g, "Model quota")
+    .replace(/充值余额/g, "Top-up balance")
+    .replace(/赠送余额/g, "Granted balance")
+    .replace(/账户余额请在服务商控制台查看。/g, "Check account balance in your provider console.")
+    .replace(/账户余额/g, "Account balance")
+    .replace(/不限量/g, "Unlimited")
+    .replace(/此模型未提供账号额度查询。/g, "Quota lookup is not available for this model.")
+    .replace(/此后端暂未接入账号额度查询；下方显示后端已报告的对话用量。/g, "Account quota is not available for this backend; reported conversation usage is shown below.")
+    .replace(/此后端暂(?:未接入|不支持)账号额度查询。/g, "Quota lookup is not supported for this backend.")
+    .replace(/当前账号未返回可用的订阅额度数据。/g, "No subscription quota data returned for this account.")
+    .replace(/服务商未返回有效额度数据。/g, "No valid quota data returned by the provider.")
+    .replace(/API 模式的账户余额和限额请在服务商控制台查看；下方显示后端已报告的对话用量。费用仅为后端估算。/g, "Check API balances and limits in your provider console; reported conversation usage is shown below.")
+    .replace(/暂时无法刷新额度。/g, "Couldn't refresh quota right now.")
+    .replace(/暂时无法获取(?:订阅)?额度，请检查(?:[^，]+)?登录状态和网络后刷新。/g, "Couldn't load quota. Check your sign-in and network, then refresh.");
+}
 
 interface UsageContext {
   backend: BackendId;
@@ -81,7 +109,7 @@ export class UsageMeter {
       this.lastAttempt = this.retryAt = 0;
       void this.refresh();
     }
-    const signature = JSON.stringify([this.stats, context.showCost]);
+    const signature = JSON.stringify([this.stats, context.showCost, getUiLanguage(this.el)]);
     if (signature !== this.signature) { this.signature = signature; this.paint(); }
   }
 
@@ -143,13 +171,14 @@ export class UsageMeter {
   // ───────────────────────────── popover ─────────────────────────────
 
   private open(): void {
+    const en = getUiLanguage(this.el) === "en";
     this.opening();
     this.hideTip();
     this.body = h("div.upop__body");
-    this.refreshButton = h("button.btn.btn--sm.btn--quiet", { type: "button", onclick: () => void this.refresh(true) }, "刷新") as HTMLButtonElement;
-    this.pop = h("div.menu.upop", { role: "dialog", "aria-label": "额度与用量详情", tabindex: "-1",
+    this.refreshButton = h("button.btn.btn--sm.btn--quiet", { type: "button", onclick: () => void this.refresh(true) }, en ? "Refresh" : "刷新") as HTMLButtonElement;
+    this.pop = h("div.menu.upop", { role: "dialog", "aria-label": en ? "Quota and usage details" : "额度与用量详情", tabindex: "-1",
       onkeydown: (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); this.close(true); } } },
-      h("div.cpop__head", null, h("span.cpop__title", null, "额度与用量"), this.refreshButton), this.body);
+      h("div.cpop__head", null, h("span.cpop__title", null, en ? "Quota & usage" : "额度与用量"), this.refreshButton), this.body);
     this.host.appendChild(this.pop);
     this.button.setAttribute("aria-expanded", "true");
     this.paint();
@@ -167,6 +196,8 @@ export class UsageMeter {
   private paint(): void {
     const c = this.context;
     if (!c) return;
+    const en = getUiLanguage(this.el) === "en";
+    const fmt = (s: string) => en ? enQuotaText(s) : s;
     const a = this.account;
     const windows = a?.windows ?? [];
     const balances = a?.balances ?? [];
@@ -182,43 +213,49 @@ export class UsageMeter {
     const tight = live.length ? live.reduce((m, w) => left(w) < left(m) ? w : m) : windows[0];
     const t = this.stats.total;
     const known = t.inputTokens !== undefined || t.outputTokens !== undefined;
-    const tokens = known ? `本对话 ${fmtTokens((t.inputTokens ?? 0) + (t.outputTokens ?? 0))} Tokens` : "等待用量数据";
-    const money = (b: NonNullable<AccountUsage["balances"]>[number]) => `${b.currency ? `${b.currency} ` : ""}${b.remaining}`;
-    const head = tight ? `${tight.label} · ${expired(tight) ? "待刷新" : `剩余 ${pct(left(tight))}`}` : balances[0] ? `${balances[0].label} · ${money(balances[0])}` : "";
-    this.summary.textContent = head ? `${stale ? "上次数据 · " : ""}${head}` : this.loading ? "额度查询中…" : billing === "api-key" ? tokens : "额度暂不可用";
+    const tokens = known ? (en ? `This chat ${fmtTokens((t.inputTokens ?? 0) + (t.outputTokens ?? 0))} tokens` : `本对话 ${fmtTokens((t.inputTokens ?? 0) + (t.outputTokens ?? 0))} Tokens`) : (en ? "Waiting for usage data" : "等待用量数据");
+    const money = (b: NonNullable<AccountUsage["balances"]>[number]) => `${b.currency ? `${b.currency} ` : ""}${fmt(b.remaining)}`;
+    const head = tight ? `${fmt(tight.label)} · ${expired(tight) ? (en ? "Pending refresh" : "待刷新") : (en ? `${pct(left(tight))} left` : `剩余 ${pct(left(tight))}`)}` : balances[0] ? `${fmt(balances[0].label)} · ${money(balances[0])}` : "";
+    this.summary.textContent = head ? `${stale ? (en ? "Cached · " : "上次数据 · ") : ""}${head}` : this.loading ? (en ? "Checking quota…" : "额度查询中…") : billing === "api-key" ? tokens : (en ? "Quota unavailable" : "额度暂不可用");
 
     // The gauge: remaining share of the tightest live window; a full ring for a known balance; an empty track otherwise.
     const fill = tight && !expired(tight) ? left(tight) : !tight && balances.length ? 100 : 0;
     this.arc.setAttribute("stroke-dasharray", `${Number(fill.toFixed(1))} 100`);
     this.el.dataset.level = !stale && tight && !expired(tight) ? (left(tight) <= 10 ? "low" : left(tight) <= 30 ? "warm" : "") : "";
     this.el.dataset.state = this.loading && !a ? "loading" : tight || balances.length ? (stale || (tight && expired(tight)) ? "stale" : "ok") : "none";
-    this.button.setAttribute("aria-label", `额度与用量：${this.summary.textContent}。点击查看详情`);
+    this.button.setAttribute("aria-label", en ? `Quota & usage: ${this.summary.textContent}. Show details` : `额度与用量：${this.summary.textContent}。点击查看详情`);
     this.placeTip();
     if (!this.body) return;
 
-    if (this.refreshButton) { this.refreshButton.disabled = this.loading; this.refreshButton.textContent = this.loading ? "刷新中…" : "刷新"; }
-    const time = (ms: number) => new Date(ms).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    const titleEl = this.pop?.querySelector(".cpop__title");
+    if (titleEl) titleEl.textContent = en ? "Quota & usage" : "额度与用量";
+    this.pop?.setAttribute("aria-label", en ? "Quota and usage details" : "额度与用量详情");
+    if (this.refreshButton) { this.refreshButton.disabled = this.loading; this.refreshButton.textContent = this.loading ? (en ? "Refreshing…" : "刷新中…") : (en ? "Refresh" : "刷新"); }
+    const time = (ms: number) => new Date(ms).toLocaleString(en ? "en-US" : "zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
     const row = (label: string, value: string) => [h("dt", null, label), h("dd", null, value)];
-    const tok = (n: number | undefined) => n === undefined ? "未报告" : fmtTokens(n);
-    const usd = (n: number | undefined) => n === undefined ? "未报告" : `$${n.toFixed(4)}`;
+    const tok = (n: number | undefined) => n === undefined ? (en ? "Not reported" : "未报告") : fmtTokens(n);
+    const usd = (n: number | undefined) => n === undefined ? (en ? "Not reported" : "未报告") : `$${n.toFixed(4)}`;
     const level = (w: Window) => expired(w) || stale ? "" : left(w) <= 10 ? "low" : left(w) <= 30 ? "warm" : "";
+    const billingLabel = en ? { subscription: "Subscription", "api-key": "API key", account: "Account balance" }[billing] : { subscription: "订阅账号", "api-key": "API 模式", account: "账号余额" }[billing];
     setKids(this.body,
-      h("div.upop__caption", null, `${c.backend}${a?.provider ? ` / ${a.provider}` : ""} · ${{ subscription: "订阅账号", "api-key": "API 模式", account: "账号余额" }[billing]}${a?.plan ? ` · ${a.plan}` : ""}`),
+      h("div.upop__caption", null, `${c.backend}${a?.provider ? ` / ${a.provider}` : ""} · ${billingLabel}${a?.plan ? ` · ${a.plan}` : ""}`),
       windows.length ? h("div.upop__windows", null, windows.map(w => h("div.upop__window", { dataset: { stale: String(stale || expired(w)), level: level(w) } },
-        h("div.cpop__head", null, h("span.upop__label", null, w.label), h("strong.upop__pct", null, expired(w) ? "等待刷新" : `剩余 ${pct(left(w))}`)),
-        h("div.upop__bar", { role: "progressbar", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": String(Math.round(left(w))), "aria-label": `${w.label}剩余额度` },
+        h("div.cpop__head", null, h("span.upop__label", null, fmt(w.label)), h("strong.upop__pct", null, expired(w) ? (en ? "Pending refresh" : "等待刷新") : (en ? `${pct(left(w))} left` : `剩余 ${pct(left(w))}`))),
+        h("div.upop__bar", { role: "progressbar", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": String(Math.round(left(w))), "aria-label": en ? `${fmt(w.label)} remaining quota` : `${w.label}剩余额度` },
           h("span.upop__fill", { style: `width:${expired(w) ? 0 : left(w)}%` })),
-        h("p.cpop__why", null, `${expired(w) ? "已到重置时间，刷新后确认新额度" : `已用 ${pct(w.usedPercent)}`}${w.resetsAt ? ` · ${time(w.resetsAt)} 重置` : " · 重置时间未报告"}`))))
-        : !balances.length ? h("p.cpop__why", null, this.loading ? "正在查询账号额度…" : a?.message || this.error || "暂无额度数据。") : null,
-      balances.length ? h("dl.cpop__facts.upop__balances", null, balances.map(b => row(b.label, money(b)))) : null,
-      this.error && (windows.length || balances.length) ? h("p.upop__error", { role: "status" }, `${this.error} 当前显示上次成功获取的数据。`) : null,
-      a && (windows.length || balances.length) ? h("p.cpop__why", null, `${stale ? "上次数据" : "更新于"} ${time(a.checkedAt)} · 账号额度包含其他客户端的使用`) : null,
+        h("p.cpop__why", null, en
+          ? `${expired(w) ? "Reset time reached; refresh to check new quota" : `${pct(w.usedPercent)} used`}${w.resetsAt ? ` · Resets ${time(w.resetsAt)}` : " · Reset time not reported"}`
+          : `${expired(w) ? "已到重置时间，刷新后确认新额度" : `已用 ${pct(w.usedPercent)}`}${w.resetsAt ? ` · ${time(w.resetsAt)} 重置` : " · 重置时间未报告"}`))))
+        : !balances.length ? h("p.cpop__why", null, this.loading ? (en ? "Checking account quota…" : "正在查询账号额度…") : fmt(a?.message || this.error) || (en ? "No quota data available." : "暂无额度数据。")) : null,
+      balances.length ? h("dl.cpop__facts.upop__balances", null, balances.map(b => row(fmt(b.label), money(b)))) : null,
+      this.error && (windows.length || balances.length) ? h("p.upop__error", { role: "status" }, en ? `${fmt(this.error)} Showing the last fetched snapshot.` : `${this.error} 当前显示上次成功获取的数据。`) : null,
+      a && (windows.length || balances.length) ? h("p.cpop__why", null, en ? `${stale ? "Cached" : "Updated"} ${time(a.checkedAt)} · Account quota includes usage across all clients` : `${stale ? "上次数据" : "更新于"} ${time(a.checkedAt)} · 账号额度包含其他客户端的使用`) : null,
       h("dl.cpop__facts", null,
-        row("本轮输入 / 输出", `${tok(this.stats.last?.inputTokens)} / ${tok(this.stats.last?.outputTokens)} Tokens`),
-        row("本对话输入 / 输出", `${tok(t.inputTokens)} / ${tok(t.outputTokens)} Tokens`),
-        row("已报告 Token 的轮次", `${this.stats.reported} / ${this.stats.turns}`),
-        billing !== "subscription" && c.showCost ? [row("本轮估算费用", usd(this.stats.last?.costUsd)), row("本对话估算费用", usd(t.costUsd))] : null),
-      h("p.cpop__why", null, "对话用量仅统计后端已报告的数据；Token 数不代表订阅剩余额度。"));
+        row(en ? "Last turn in / out" : "本轮输入 / 输出", `${tok(this.stats.last?.inputTokens)} / ${tok(this.stats.last?.outputTokens)} Tokens`),
+        row(en ? "This chat in / out" : "本对话输入 / 输出", `${tok(t.inputTokens)} / ${tok(t.outputTokens)} Tokens`),
+        row(en ? "Turns reporting tokens" : "已报告 Token 的轮次", `${this.stats.reported} / ${this.stats.turns}`),
+        billing !== "subscription" && c.showCost ? [row(en ? "Last turn est. cost" : "本轮估算费用", usd(this.stats.last?.costUsd)), row(en ? "This chat est. cost" : "本对话估算费用", usd(t.costUsd))] : null),
+      h("p.cpop__why", null, en ? "Chat usage only counts tokens reported by the backend; token counts do not represent remaining subscription quota." : "对话用量仅统计后端已报告的数据；Token 数不代表订阅剩余额度。"));
     this.placePop();
   }
 }

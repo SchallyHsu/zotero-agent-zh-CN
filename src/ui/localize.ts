@@ -1,6 +1,21 @@
 // Local zh-CN overlay. Only presentation text is translated; stored settings,
 // identifiers, permission values, prompts, citations and conversation text are kept.
-import messages from "./zh-CN.json";
+import type { UiLanguage } from "../types.ts";
+import messages from "./zh-CN.json" with { type: "json" };
+
+let activeLang: UiLanguage = "zh-CN";
+
+export function setUiLanguage(lang: UiLanguage): void {
+  activeLang = lang === "en" ? "en" : "zh-CN";
+}
+
+export function getUiLanguage(node?: Node | null): UiLanguage {
+  const el = node ? (node.nodeType === 1 ? node as Element : node.parentElement) : null;
+  const app = el?.closest?.(".zmc") as HTMLElement | null ?? ((node?.getRootNode?.() as ShadowRoot | undefined)?.querySelector?.(".zmc") as HTMLElement | null);
+  if (app?.dataset.lang === "en") return "en";
+  if (app?.dataset.lang === "zh-CN") return "zh-CN";
+  return activeLang;
+}
 
 const dictionary: Readonly<Record<string, string>> = messages;
 type Rule = [RegExp, (...groups: string[]) => string];
@@ -117,16 +132,34 @@ function translateLabel(value: string): string {
 const CONTENT = ".md,.ubub__text,.thought__body,.hrow__t,.hrow__f,.chip__t,.source__t,.pop__t,.pop__s,.sp__desc,.folder__p,.plan__text,.zmc-tr__text,[data-no-localize]";
 const NEVER = "style,script,pre,code,svg,textarea,[contenteditable=true]";
 const ATTRS = ["title", "placeholder", "aria-label", "aria-description"];
+const OBSERVED_ATTRS = [...ATTRS, "data-lang"];
 
 /** Bind only this plugin's shadow tree; never observe or modify the library UI. */
 export function localizeRoot(root: ShadowRoot): () => void {
   const doc = root.ownerDocument;
   const win = doc.defaultView as Window & typeof globalThis;
+  const originalText = new WeakMap<Text, string>();
+  const translatedText = new WeakMap<Text, string>();
+  const originalAttr = new WeakMap<Element, Map<string, string>>();
+  const translatedAttr = new WeakMap<Element, Map<string, string>>();
+  const currentLang = (): UiLanguage =>
+    (root.querySelector(".zmc") as HTMLElement | null)?.dataset.lang === "en" ? "en" : "zh-CN";
+  let lang: UiLanguage = currentLang();
+  setUiLanguage(lang);
+
   const attribute = (el: Element, key: string): void => {
     const before = el.getAttribute(key);
     if (!before) return;
     const after = translateUI(before);
-    if (after !== before) el.setAttribute(key, after);
+    if (after !== before) {
+      let orig = originalAttr.get(el);
+      if (!orig) { orig = new Map(); originalAttr.set(el, orig); }
+      let trans = translatedAttr.get(el);
+      if (!trans) { trans = new Map(); translatedAttr.set(el, trans); }
+      orig.set(key, before);
+      trans.set(key, after);
+      el.setAttribute(key, after);
+    }
   };
   const isControl = (el: Element): boolean => !!el.closest(".md button");
   const protectedContent = (el: Element): boolean =>
@@ -139,9 +172,14 @@ export function localizeRoot(root: ShadowRoot): () => void {
   };
   const walk = (node: Node): void => {
     if (node.nodeType === 3) {
-      const before = node.nodeValue ?? "";
+      const t = node as Text;
+      const before = t.nodeValue ?? "";
       const after = translateUI(before);
-      if (after !== before) node.nodeValue = after;
+      if (after !== before) {
+        originalText.set(t, before);
+        translatedText.set(t, after);
+        t.nodeValue = after;
+      }
       return;
     }
     if (node.nodeType !== 1 && node.nodeType !== 11) return;
@@ -162,8 +200,28 @@ export function localizeRoot(root: ShadowRoot): () => void {
     }
     for (const child of node.childNodes) walk(child);
   };
+  const restore = (node: Node): void => {
+    if (node.nodeType === 3) {
+      const t = node as Text;
+      const orig = originalText.get(t);
+      if (orig !== undefined && t.nodeValue === translatedText.get(t)) t.nodeValue = orig;
+      return;
+    }
+    if (node.nodeType !== 1 && node.nodeType !== 11) return;
+    if (node.nodeType === 1) {
+      const el = node as Element;
+      const orig = originalAttr.get(el);
+      const trans = translatedAttr.get(el);
+      if (orig && trans) {
+        for (const [k, v] of orig) {
+          if (el.getAttribute(k) === trans.get(k)) el.setAttribute(k, v);
+        }
+      }
+    }
+    for (const child of node.childNodes) restore(child);
+  };
   const localize = (node: Node): void => {
-    if (!root.contains(node) && node !== root) return;
+    if (lang !== "zh-CN" || (!root.contains(node) && node !== root)) return;
     // Check ancestors once at the entry point, not for every word in a reply.
     const parent = node.parentElement;
     if (parent && protectedContent(parent)) {
@@ -176,13 +234,22 @@ export function localizeRoot(root: ShadowRoot): () => void {
     }
     walk(node);
   };
-  localize(root);
-  root.host.setAttribute("lang", "zh-CN");
-  const options: MutationObserverInit = {subtree:true, childList:true, characterData:true, attributes:true, attributeFilter:ATTRS};
+  if (lang === "zh-CN") localize(root);
+  root.host.setAttribute("lang", lang);
+  const options: MutationObserverInit = {subtree:true, childList:true, characterData:true, attributes:true, attributeFilter:OBSERVED_ATTRS};
   const observer = new win.MutationObserver(records => {
     // Translation writes must not schedule a second pass over the same DOM.
     observer.disconnect();
     try {
+      const nextLang = currentLang();
+      if (nextLang !== lang) {
+        lang = nextLang;
+        setUiLanguage(lang);
+        root.host.setAttribute("lang", lang);
+        if (lang === "en") restore(root);
+        else localize(root);
+      }
+      if (lang !== "zh-CN") return;
       const pending = new Set<Node>();
       const attributes = new Map<Element, Set<string>>();
       const prose = new Set<Element>();
@@ -194,10 +261,10 @@ export function localizeRoot(root: ShadowRoot): () => void {
           } else for (const node of record.addedNodes) pending.add(node);
         }
         else if (record.type === "characterData") pending.add(record.target);
-        else {
+        else if (record.attributeName && record.attributeName !== "data-lang") {
           const el = record.target as Element;
           const keys = attributes.get(el) ?? new Set<string>();
-          keys.add(record.attributeName!);
+          keys.add(record.attributeName);
           attributes.set(el, keys);
         }
       }

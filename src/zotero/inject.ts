@@ -94,8 +94,9 @@ export function injectPanel(win: any, load: (shadow: ShadowRoot) => Panel, prefs
   const button = doc.createXULElement("toolbarbutton");
   button.id = "zmc-toggle";
   button.className = "zotero-tb-button";
-  button.setAttribute("tooltiptext", "文献助手");
-  button.setAttribute("aria-label", "文献助手");
+  const tbLabel = prefs.json<{ appearance?: { language?: string } }>("settings", {}).appearance?.language === "en" ? "Zotero Agent" : "文献助手";
+  button.setAttribute("tooltiptext", tbLabel);
+  button.setAttribute("aria-label", tbLabel);
   button.style.cssText = `-moz-context-properties: stroke; stroke: currentColor; list-style-image: url("${ICON}");`;
   toolbar?.insertBefore(button, doc.getElementById("zotero-tb-tabs-menu")?.nextSibling ?? null);
 

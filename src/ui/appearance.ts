@@ -2,9 +2,10 @@
 // colours by WCAG contrast) is unit-tested; `Look` writes the choice onto the panel's root as data attributes and CSS
 // variables, so a change shows at once and nothing re-renders. The CSS that reads them is styles-look.ts.
 import type { Appearance, SettingsHost } from "../types.ts";
+import { setUiLanguage } from "./localize.ts";
 
 export const DEFAULT_APPEARANCE: Appearance = {
-  glass: true, accent: "", background: "none", image: "", imageVisibility: 50, imageBlur: 0, textSize: "default", density: "comfortable",
+  language: "zh-CN", glass: true, accent: "", background: "none", image: "", imageVisibility: 50, imageBlur: 0, textSize: "default", density: "comfortable",
 };
 
 /** The swatches, each a light and a dark colour. The first, Mono (our ink), is the default and is saved as "". */
@@ -40,6 +41,7 @@ export function readAppearance(raw: unknown): Appearance {
   const image = typeof s.image === "string" ? s.image.slice(0, 120) : "";
   const accent = typeof s.accent === "string" && HEX.test(s.accent) ? s.accent.toLowerCase() : "";
   return {
+    language: oneOf(s.language, ["zh-CN", "en"] as const, d.language ?? "zh-CN"),
     glass: typeof s.glass === "boolean" ? s.glass : d.glass,
     accent,
     background: oneOf(s.background, ["none", ...BACKGROUNDS.map((b) => b.id), ...(image ? ["image"] : [])], "none"),
@@ -121,10 +123,15 @@ export class Look {
   apply(a: Appearance = this.host.getSettings().appearance): void {
     const { el } = this;
     const wantsImage = a.background === "image" && !!a.image;
+    const lang = a.language === "en" ? "en" : "zh-CN";
+    setUiLanguage(lang);
     Object.assign(el.dataset, {
+      lang,
       glass: a.glass ? "on" : "off", size: a.textSize, density: a.density,
       bg: wantsImage ? (this.image ? "image" : "none") : a.background,
     });
+    const root = el.getRootNode() as ShadowRoot;
+    if (root.host) root.host.setAttribute("lang", lang);
     const vars: Record<string, string> = {
       ...accentVars(a.accent),
       // The veil is the panel's paper laid over the picture: at full visibility 30% of it stays, so text keeps its contrast.

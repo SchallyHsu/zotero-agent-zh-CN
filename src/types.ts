@@ -356,8 +356,12 @@ export interface PanelSettings {
   appearance: Appearance;
 }
 
+export type UiLanguage = "zh-CN" | "en";
+
 /** How the panel looks (ui/appearance.ts validates it and applies it). */
 export interface Appearance {
+  /** Interface language for the side panel and settings. Default is "zh-CN". */
+  language?: UiLanguage;
   /** Translucent surfaces over a soft backdrop; off is the flat look. */
   glass: boolean;
   /** "" = our red; otherwise "#rrggbb". */

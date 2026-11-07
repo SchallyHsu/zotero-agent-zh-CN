@@ -32,7 +32,8 @@ metadata work until after the reply. Added local latency measurement and native
 XPI fast-resume verification. Model and reasoning preferences are preserved.
 Release update: **2026-11-08**, version **0.15.2.11**: replace the top quota
 text bar with a compact circular gauge + diamond icon in the composer toolbar,
-hover pill tooltip and anchored detail popover; update verification and size budget.
+hover pill tooltip and anchored detail popover; add a live Chinese/English UI
+language setting (`appearance.language`); update verification and size budget.
 The 0.15.2.4 through 0.15.2.9 development updates were first distributed together
 in release **0.15.2.9**, source tag **zh-CN-v0.15.2.9**. Release **0.15.2.10**
 (**zh-CN-v0.15.2.10**) added the quota display; the current release is

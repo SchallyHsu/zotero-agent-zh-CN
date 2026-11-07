@@ -52,9 +52,9 @@ export function settingsView(host: SettingsHost, o: SettingsDeps): { el: HTMLEle
     try { await host.setSettings(patch); o.changed(); flash(); } catch (e) { keyMsg = `Couldn't save: ${errMessage(e)}`; }
     render();
   };
-  // The look needs no health check or catalog reload, only the restyle.
+  // The look needs no health check or catalog reload, only the restyle (unless language changed).
   const saveLook = async (patch: Partial<Appearance>) => {
-    try { await host.setSettings({ appearance: { ...host.getSettings().appearance, ...patch } }); o.look.apply(); flash(); } catch (e) { keyMsg = `Couldn't save: ${errMessage(e)}`; }
+    try { await host.setSettings({ appearance: { ...host.getSettings().appearance, ...patch } }); o.look.apply(); if (patch.language !== undefined) o.changed(); flash(); } catch (e) { keyMsg = `Couldn't save: ${errMessage(e)}`; }
     render();
   };
   const appearance = appearanceCard(host, o.look, saveLook, () => render());
