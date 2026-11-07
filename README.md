@@ -1,4 +1,4 @@
-# Zotero Agent 简体中文（非官方）
+# Zotero Agent（非官方）
 
 **简体中文** | [English](README.en.md)
 
