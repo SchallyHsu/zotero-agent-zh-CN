@@ -21,13 +21,18 @@ Local development update: **2026-11-07**, version **0.15.2.8**: packaged helper
 assets load through Gecko channels rather than HTTP; the Windows Codex waiting
 worker explicitly breaks away from the parent Gecko process job. Added real
 Zotero/XPI integration checks with isolated libraries and native metadata homes.
+Release update: **2026-11-07**, version **0.15.2.10**: add an account
+quota and conversation usage display; read-only Codex app-server and Antigravity
+native queries; original Claude, pi and DSH compatibility adapters with provider
+credential isolation, stale/reset handling and synthetic plus native verification.
 Local development update: **2026-11-07**, version **0.15.2.9**: remove an idle
 shutdown timer from the Antigravity helper, resume confirmed App conversations
 through validated local storage, bound stale daemon discovery, and defer redundant
 metadata work until after the reply. Added local latency measurement and native
 XPI fast-resume verification. Model and reasoning preferences are preserved.
-The 2026-11-07 development updates above are distributed together in release
-**0.15.2.9**, source tag **zh-CN-v0.15.2.9**.
+The 0.15.2.4 through 0.15.2.9 development updates were first distributed together
+in release **0.15.2.9**, source tag **zh-CN-v0.15.2.9**. The current release is
+**0.15.2.10**, source tag **zh-CN-v0.15.2.10**, including the quota update above.
 This repository is an **unofficial derivative**, not the original Zotero MCP
 project and not an official Zotero product. Original implementation credit belongs
 to the [Zotero MCP contributors](https://github.com/54yyyu/zotero-mcp/graphs/contributors).

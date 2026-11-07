@@ -80,7 +80,7 @@ class Panel {
       host,
       onChange: () => this.scheduleRender(),
       blockReason: () => this.health.blockReason(),
-      turnEnded: (stop) => this.feed.announce(stop === "end_turn" ? "Answer finished" : "Turn ended"),
+      turnEnded: (stop) => { this.feed.announce(stop === "end_turn" ? "Answer finished" : "Turn ended"); this.composer.refreshUsage(); },
       setupFailed: () => void this.health.refresh(),
       sessionChanged: () => this.syncPickers(),
       shownChanged: () => this.refreshChips(),
@@ -102,6 +102,7 @@ class Panel {
       explain: () => this.send(EXPLAIN_BETTER, false),
     });
     this.composer = new Composer({
+      accountUsage: (backend, auth, model) => host.runtime.accountUsage?.(backend, auth, model) ?? Promise.resolve({ status: "unsupported", checkedAt: Date.now(), windows: [], message: "此后端暂未接入账号额度查询。" }),
       search: (q) => host.search(q),
       chipFor: (hit) => host.chipFor(hit),
       open: (t) => void this.open(t),
@@ -358,7 +359,7 @@ class Panel {
     };
   }
 
-  private syncPickers(): void { this.composer.setChoices(this.choices()); }
+  private syncPickers(): void { this.composer.setChoices(this.choices()); this.syncUsage(); }
 
   /** The chosen backend's models, modes and efforts. `strict`: let a failure reach the caller (a picker menu shows it). */
   private async loadCatalog(strict: boolean): Promise<void> {
@@ -391,6 +392,14 @@ class Panel {
     const s = this.host.getSettings();
     this.composer.setEnterToSend(s.enterToSend);
     this.feed.setOptions({ showThinking: s.showThinking, expandTools: s.expandTools, showUsage: s.showUsage });
+    this.syncUsage();
+  }
+
+  private syncUsage(): void {
+    const s = this.host.getSettings();
+    const backend = this.chat.session?.backend ?? this.chat.saved?.backend ?? s.backend;
+    this.composer.setUsage({ backend, auth: s.auth[backend], model: this.chat.session?.currentModel() || s.model[backend] || this.catalogs.get(backend)?.model,
+      executable: s.agentExecutables?.[backend] ?? "", showCost: s.showUsage, transcript: this.chat.tr });
   }
 
   // ───────────────────────────── the chat ─────────────────────────────
@@ -478,6 +487,7 @@ class Panel {
     this.feed.update(c.tr, !c.busy);
     this.composer.setBusy(c.busy || this.switchingPaper);
     this.composer.setContextFill(contextFill(c.tr));
+    this.syncUsage();
     this.feed.setPending(c.sending && c.tr.running === null ? (c.compacting ? "Summarising" : c.starting ? `Starting ${BACKEND_LABEL[this.host.getSettings().backend]}` : "Sending") : null);
     if (!c.busy) void this.followPaper();
   }

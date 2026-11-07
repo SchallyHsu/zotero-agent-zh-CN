@@ -6,6 +6,7 @@
 // scale it. Container queries, not media queries: the panel's width is not the window's.
 import { CHAT_STYLES } from "./styles-chat.ts";
 import { CONTEXT_STYLES } from "./styles-context.ts";
+import { USAGE_STYLES } from "./styles-usage.ts";
 import { WELCOME_STYLES } from "./styles-welcome.ts";
 import { LOOK_STYLES } from "./styles-look.ts";
 import { SKILL_STYLES } from "./styles-skills.ts";
@@ -389,7 +390,7 @@ const BASE = `
 .zmc .set__saved span:empty { display: none; }
 `;
 
-export const STYLES = BASE + CHAT_STYLES + THINK_STYLES + WELCOME_STYLES + CONTEXT_STYLES + SKILL_STYLES + LOOK_STYLES + `
+export const STYLES = BASE + CHAT_STYLES + THINK_STYLES + WELCOME_STYLES + CONTEXT_STYLES + SKILL_STYLES + LOOK_STYLES + USAGE_STYLES + `
 .zmc .seg--agents { flex-wrap: wrap; }
 .zmc .seg--agents .seg__opt { flex: 1 1 30%; white-space: normal; }
 `;

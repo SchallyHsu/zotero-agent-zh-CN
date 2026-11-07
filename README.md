@@ -1,16 +1,16 @@
 # Zotero Agent 简体中文（非官方）
 
-**0.15.2.9** 汇总项目与文章对话管理、后端项目同步、Antigravity 和 DeepSeek Harness 接入，以及安装和性能修复。Antigravity 已确认项目的续聊使用本地快路径，清理多余的 2 秒等待，并延后重复的元数据同步。见 [更新记录](CHANGELOG.md)、[性能检查](docs/antigravity-latency.md)、[安装链路验证](docs/xpi-projects-validation.md) 与 [配置说明](docs/native-backends.md)。
+**0.15.2.10** 在输入框上方新增“额度与用量”：显示账号剩余额度、重置时间或余额，以及本轮和本对话的 Token 用量。支持 Codex、Claude Code、Antigravity、DeepSeek Harness，并按 pi／dsh 当前模型匹配对应服务商的账号。各后端支持范围和实际验证边界见 [额度与用量说明](docs/account-usage.md)；完整改动见 [更新记录](CHANGELOG.md)。
 
 基于 [54yyyu/zotero-mcp](https://github.com/54yyyu/zotero-mcp) 的 Zotero Agent 插件制作的**非官方简体中文衍生版**。本仓库增加界面汉化、项目与文章对话管理、后端适配和性能优化；原插件的模型接入、文献读取、对话、工具调用等核心功能来自原项目及其贡献者。
 
-**上游版本：** [v0.15.2](https://github.com/54yyyu/zotero-mcp/tree/v0.15.2/plugin) · **上游提交：** [`dfec70c8b772e697476e0b42c1264441cf518686`](https://github.com/54yyyu/zotero-mcp/commit/dfec70c8b772e697476e0b42c1264441cf518686) · **本版：** `0.15.2.9`
+**上游版本：** [v0.15.2](https://github.com/54yyyu/zotero-mcp/tree/v0.15.2/plugin) · **上游提交：** [`dfec70c8b772e697476e0b42c1264441cf518686`](https://github.com/54yyyu/zotero-mcp/commit/dfec70c8b772e697476e0b42c1264441cf518686) · **本版：** `0.15.2.10`
 
 本项目不是 Zotero 或 Zotero MCP 官方发布，不代表原作者背书。请先了解原项目，并将通用功能问题与本仓库的汉化问题区分开。
 
 ## 下载与安装
 
-1. 从 [Releases](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases) 下载 `zotero-agent-zh-CN-0.15.2.9.xpi`，校验文件为 `SHA256SUMS.txt`。
+1. 从 [Releases](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.10) 下载 `zotero-agent-zh-CN-0.15.2.10.xpi`，校验文件为 `SHA256SUMS.txt`。
 2. 打开 Zotero → **工具 → 插件**，点击齿轮，选择“从文件安装插件”，选取 `.xpi`；按提示重新启动 Zotero。
 3. 从工具栏“文献助手”按钮打开侧栏，完成原插件要求的 `zotero-cli` 和模型后端配置。详细要求见 [上游插件文档](https://github.com/54yyyu/zotero-mcp/blob/v0.15.2/docs/chat-plugin.md)。
 
@@ -32,6 +32,12 @@
 - **Antigravity**：安装 App 与 `agy` 后，在原生项目内预建会话，再通过 ACP 接续并共享 App 存储。旧 CLI 对话通过一致性快照和原生分叉接续到项目，原对话保留；名称同步到原生摘要，首条回复前会保持待处理状态。
 - **DeepSeek Harness**：通过本地配套扩展同步到 dsh 原生工作区，首次安装后需完全退出并重开 dsh Desktop / Web 宿主一次。之后新会话自动归类，旧会话按原 ID 回填；未收到原生确认时显示待处理状态。
 - 项目及历史保存在本机，不通过 Zotero 文献同步。元数据同步不调用模型、不额外发送论文或对话正文。
+
+## 额度与用量
+
+点击输入框上方的“额度与用量”可查看详情：Codex、Claude Code、Antigravity 显示额度窗口；DeepSeek Harness 原生账号显示充值／赠送余额；pi／dsh 第三方模型按当前服务商查询，避免串用其他客户端账号。查询失败会标记上次数据，登录过期会提示刷新登录，不影响继续聊天。
+
+本机已实测 Codex、Antigravity 和 DeepSeek Harness；Claude 成功响应及 pi 服务商分流目前由模拟测试覆盖。部分查询使用客户端兼容接口。详细支持范围、刷新行为和验证结果见 [额度与用量说明](docs/account-usage.md)。
 
 ## 汉化内容
 
@@ -69,7 +75,7 @@ npm run typecheck
 npm run build
 ```
 
-生成的安装包为 `dist/zotero-agent.xpi`。完整源码、构建脚本、锁文件、许可证与来源说明均在本仓库中；下载对应的 `zh-CN-v0.15.2.9` 源码标签可获得该发布版的源码。
+生成的安装包为 `dist/zotero-agent.xpi`。完整源码、构建脚本、锁文件、许可证与来源说明均在本仓库中；下载对应的 `zh-CN-v0.15.2.10` 源码标签或 Release 附带的完整源码包可获得该发布版的源码。
 
 ## 验证与开发预览
 

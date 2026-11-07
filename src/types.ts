@@ -194,8 +194,30 @@ export interface Catalog {
 export interface AgentRuntime {
   detect(): Promise<BackendStatus[]>;
   start(opts: StartOpts): Promise<AgentSession>;
+  /** Read account limits without starting a chat or sending a model prompt. */
+  accountUsage?(backend: BackendId, auth: "subscription" | "api-key", model?: string): Promise<AccountUsage>;
   /** The backend's models, modes and efforts. Cached after the first call (which starts a short-lived bridge). */
   catalog(backend: BackendId): Promise<Catalog>;
+}
+
+/** Account-wide provider data, separate from a chat's token/context usage. Never persisted in chat history. */
+export interface AccountUsage {
+  status: "available" | "unsupported" | "unavailable" | "api-key";
+  checkedAt: number;
+  plan?: string;
+  provider?: string;
+  billing?: "subscription" | "api-key" | "account";
+  /** Earliest automatic retry after a provider throttles quota queries. */
+  retryAt?: number;
+  message?: string;
+  balances?: { label: string; remaining: string; currency?: string }[];
+  windows: {
+    id: string;
+    label: string;
+    usedPercent: number;
+    /** Unix time in milliseconds. */
+    resetsAt?: number;
+  }[];
 }
 
 // ─────────────────── process spawning (injected into agent/) ───────────────────

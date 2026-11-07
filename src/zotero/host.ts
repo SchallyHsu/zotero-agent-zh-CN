@@ -38,7 +38,8 @@ export function createHost(opts: { id: string; version: string; rootURI?: string
   const spawner = createGeckoSpawner();
   const context = new ContextTracker(opts.id);
   context.start(win);
-  const base = createRuntime({ spawner, bridgeDir: PathUtils.join(dataDir, "bridges"), executable: (b) => settings().agentExecutables?.[b] });
+  const base = createRuntime({ spawner, bridgeDir: PathUtils.join(dataDir, "bridges"), executable: (b) => settings().agentExecutables?.[b],
+    accountUsageHelper: async () => { await nativeHelper("antigravity-project-integration.mjs"); return nativeHelper("account-usage.mjs"); } });
   const known = new Map<BackendId, Catalog>();
   // Wherever zotero-cli is, the agent's shell must find it: its folder goes on the agent's PATH.
   const runtime: AgentRuntime = {

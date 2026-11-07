@@ -1,6 +1,6 @@
 // The composer: context chips, the textarea, `@` and `+` search, the `/` menu, the pickers, Send / Stop.
 // It owns the draft and the popups; the controller (index.ts) owns what a send does.
-import type { BackendId, ContextChip, ItemHit, ZoteroRef } from "../types.ts";
+import type { AccountUsage, BackendId, ContextChip, ItemHit, ZoteroRef } from "../types.ts";
 import { CHIP_ICON, append, env, errMessage, h, icon, isMac, setKids } from "./dom.ts";
 import { imageFiles } from "./images.ts";
 import type { Fill } from "./economy.ts";
@@ -11,10 +11,12 @@ import { ContextRing, FULL_AT } from "./ring.ts";
 import type { RingInfo } from "./ring.ts";
 import { SlashMenu } from "./slash.ts";
 import type { SlashItem } from "./slash.ts";
+import { UsageMeter } from "./usage.ts";
 
 export type { Choices, SlashItem };
 
 export interface ComposerOpts {
+  accountUsage(backend: BackendId, auth: "subscription" | "api-key", model?: string): Promise<AccountUsage>;
   search(query: string): Promise<ItemHit[]>;
   chipFor(hit: ItemHit): Promise<ContextChip>;
   open(target: string | ZoteroRef): void;
@@ -64,6 +66,7 @@ export class Composer {
   private atStart = -1;
   private warmed = false;
   private ring: ContextRing;
+  private usage: UsageMeter;
   private longNote: HTMLElement;
   private noteDismissed = false;
   private slash: SlashMenu;
@@ -85,19 +88,20 @@ export class Composer {
 
     this.plusBtn = h("button.iconbtn.iconbtn--sm", { type: "button", "aria-label": "Add a source", title: "Add a source (@)", "aria-haspopup": "listbox", onclick: () => this.togglePlus() }, icon("plus")) as HTMLButtonElement;
     this.el = h("div.composer");
+    this.usage = new UsageMeter(opts.accountUsage, () => { this.pickers.close(); this.ring.close(); this.pop.close(); this.slash.close(); });
     this.slash = new SlashMenu(this.el, () => opts.slashItems(), (it) => this.pickSlash(it));
     this.slash.onActive = active;
     this.pickers = new Pickers(this.el, { load: () => opts.loadChoices(), pick: (k, id) => opts.onPick(k, id), switchAgent: (id) => opts.switchAgent(id), hasMessages: () => opts.hasMessages(), checkSetup: () => opts.checkSetup() });
     this.sendBtn = h("button.send", { type: "button", "aria-label": "Send", title: "Send (Enter)", onclick: () => this.send() }, icon("send")) as HTMLButtonElement;
 
-    this.ring = new ContextRing(this.el, { info: () => opts.contextInfo(), newChat: () => opts.onNewChat(), compact: () => opts.onCompact(), opening: () => { this.pickers.close(); this.pop.close(); } });
+    this.ring = new ContextRing(this.el, { info: () => opts.contextInfo(), newChat: () => opts.onNewChat(), compact: () => opts.onCompact(), opening: () => { this.pickers.close(); this.pop.close(); this.usage.close(); } });
     this.longNote = h("div.cnote", { hidden: true, role: "status" },
       h("span.cnote__t", null, "This chat is getting long. A new chat starts fresh and carries nothing over."),
       h("button.lnk", { type: "button", onclick: () => opts.onNewChat() }, icon("plus"), "New chat"),
       h("button.chip__btn", { type: "button", "aria-label": "Dismiss", title: "Dismiss", onclick: () => { this.noteDismissed = true; this.longNote.hidden = true; } }, icon("close")));
 
     const b = this.pickers.buttons;
-    append(this.el, [this.pop.el, this.longNote, this.chipsEl, this.ta,
+    append(this.el, [this.pop.el, this.longNote, this.usage.el, this.chipsEl, this.ta,
       h("div.ctools", null, this.plusBtn, b.model, h("span.ctools__fill"), this.ring.el, b.mode, this.sendBtn)]);
     this.wireDrop();
     env.doc.addEventListener("pointerdown", this.outside, true);
@@ -119,12 +123,13 @@ export class Composer {
     });
   }
 
-  dispose(): void { env.doc.removeEventListener("pointerdown", this.outside, true); }
+  dispose(): void { this.usage.dispose(); env.doc.removeEventListener("pointerdown", this.outside, true); }
 
   private outside = (e: Event): void => {
     const path = e.composedPath();
     if (this.pickers.isOpen && !this.pickers.inside(path)) this.pickers.close();
     if (this.ring.isOpen && !this.ring.inside(path)) this.ring.close();
+    if (this.usage.isOpen && !this.usage.inside(path)) this.usage.close();
     if (this.pop.isOpen && !path.includes(this.pop.el) && !path.includes(this.plusBtn) && !path.includes(this.ta)) this.pop.close();
     if (this.slash.isOpen && !path.includes(this.slash.el) && !path.includes(this.ta)) this.slash.close();
   };
@@ -132,6 +137,8 @@ export class Composer {
   // --- state from the controller
 
   setBusy(busy: boolean): void { this.busy = busy; this.syncSend(); }
+  setUsage(context: Parameters<UsageMeter["set"]>[0]): void { this.usage.set(context); }
+  refreshUsage(): void { void this.usage.refresh(); }
   /** A reason sending is impossible right now (no backend, ...); null when fine. */
   setBlocked(reason: string | null): void { this.blocked = reason; this.syncSend(); }
   setChoices(c: Choices): void { this.pickers.set(c); }

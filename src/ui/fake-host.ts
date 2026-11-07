@@ -4,6 +4,7 @@ import { CATALOGS, bigPiCatalog, defaultSettings } from "./fake-catalog.ts";
 import { repeatLine } from "./economy.ts";
 import { DIAGRAM_ANSWER } from "./fake-diagrams.ts";
 import { FakeSkills } from "./fake-skills.ts";
+import { fakeAccountUsage } from "./fake-usage.ts";
 import { paperFromChips, projectFolderName } from "./session-model.ts";
 import type {
   AgentRuntime, AgentSession, BackendId, BackendStatus, Catalog, ChatEvent, ContextChip, DoctorCheck, ItemHit, NoteRequest, PanelHost,
@@ -305,6 +306,7 @@ export class FakeHost implements PanelHost {
     sim.setContext(o.context ?? "item");
     if (!o.noHistory) this.seedHistory(!!o.stress);
     this.runtime = {
+      accountUsage: async (backend, auth, model) => fakeAccountUsage(backend, auth, model),
       detect: async () => { await sleep(10); return this.statuses(); },
       catalog: async (b) => {
         await sleep(sim.catalogDelay);

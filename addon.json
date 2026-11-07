@@ -2,7 +2,7 @@
   "name": "Zotero Agent 简体中文（非官方）",
   "id": "chat@zotero-mcp",
   "slug": "zotero-agent",
-  "version": "0.15.2.9",
+  "version": "0.15.2.10",
   "description": "非官方简体中文 Zotero Agent；支持 Codex、Claude Code、Antigravity、dsh 原生项目归类及文章续聊。",
   "license": "AGPL-3.0-or-later",
   "homepage": "https://github.com/SchallyHsu/zotero-agent-zh-CN",

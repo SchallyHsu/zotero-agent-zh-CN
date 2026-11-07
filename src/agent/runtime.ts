@@ -4,8 +4,9 @@ import type { AgentRuntime, AgentSession, BackendId, BackendStatus, Catalog, Spa
 import { AcpClient } from "./acp.ts";
 import { BACKEND_IDS, backendOf, findCli, probeLogin, type BackendSpec } from "./backends.ts";
 import { ensureBridge, locateBridge } from "./bridges.ts";
-import { bridgeEnv, dirnameOf, findBinary, nodeEval, stripApiKeys, withPathFirst } from "./env.ts";
+import { bridgeEnv, cleanEnv, dirnameOf, findBinary, nodeEval, stripApiKeys, withPathFirst } from "./env.ts";
 import { AcpAgentSession } from "./session.ts";
+import { readAccountUsage } from "./account-usage.ts";
 
 export interface RuntimeOpts {
   spawner: Spawner;
@@ -14,6 +15,8 @@ export interface RuntimeOpts {
   /** Use this `node` instead of the one on the login PATH. */
   nodePath?: string;
   executable?: (backend: BackendId) => string | undefined;
+  /** Extract the packaged read-only quota helper on demand (Zotero host). */
+  accountUsageHelper?: () => Promise<string>;
   /** Bound on the handshake requests (ms). Default 30 000. */
   initTimeoutMs?: number;
   /** Progress text while a bridge installs ("Installing @agentclientprotocol/claude-agent-acp@0.85.1…"). */
@@ -91,6 +94,20 @@ export function createRuntime(opts: RuntimeOpts): AgentRuntime {
   }
 
   const runtime: AgentRuntime = {
+    async accountUsage(id, auth, model) {
+      // pi and dsh select their credentials per model/provider, independently of the plugin's auth preference.
+      if (id === "codex" || auth === "api-key" && id !== "pi" && id !== "deepseek-harness" || !opts.accountUsageHelper) return readAccountUsage(spawner, id, auth, opts.executable?.(id));
+      const env = cleanEnv(await spawner.baseEnv());
+      const node = await resolveNode(env);
+      if (!node) throw new Error(NODE_MISSING);
+      const helper = await opts.accountUsageHelper();
+      const cli = id === "deepseek-harness" ? await findCli(spawner, env, backendOf(id), opts.executable?.(id)) : undefined;
+      const r = await spawner.run(node, [helper, JSON.stringify({ backend: id, model, cli })], { env, timeoutMs: 30_000 });
+      if (r.code !== 0) throw new Error("Account usage query failed");
+      const result = JSON.parse(r.stdout.trim());
+      if (!result || !Array.isArray(result.windows) || !["available", "unsupported", "unavailable", "api-key"].includes(result.status)) throw new Error("Invalid account usage response");
+      return result;
+    },
     catalog(id: BackendId): Promise<Catalog> {
       const key = `${id}\0${opts.executable?.(id) ?? ""}`;
       let p = catalogs.get(key);
