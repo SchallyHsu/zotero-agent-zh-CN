@@ -1,6 +1,17 @@
 // Context economy in the composer: the fill ring (ring.ts), its tooltip and popover, and the long-chat suggestion. Same
 // tokens as styles.ts; the popover is a `.menu`, so it takes the menus' surface, glass included (styles-look.ts).
 export const CONTEXT_STYLES = `
+.zmc .selection { position: relative; flex: 1 0 100%; min-width: 0; max-width: 100%; border: 1px solid var(--rule); border-left: 3px solid var(--link); border-radius: var(--r1); background: var(--paper); overflow: hidden; }
+.zmc .selection__open { display: block; width: 100%; min-width: 0; padding: var(--s2) var(--s3); border: 0; background: none; color: var(--ink); text-align: left; }
+.zmc .selection__open:hover { background: var(--tint-hover); }
+.zmc .selection__open:focus-visible { outline-offset: -3px; }
+.zmc .selection__head { display: flex; align-items: center; gap: var(--s1); padding-right: 20px; color: var(--ink-muted); font-size: var(--fs-1); }
+.zmc .selection__head svg { flex: none; width: 14px; height: 14px; }
+.zmc .selection__page { margin-left: auto; white-space: nowrap; }
+.zmc .selection__text { display: block; margin-top: var(--s1); max-height: 12em; overflow-y: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--fs-3); line-height: 1.5; cursor: pointer; user-select: text; -moz-user-select: text; }
+.zmc .cchips .selection__text { max-height: 6em; }
+.zmc .selection__remove { position: absolute; top: 2px; right: 2px; }
+
 .zmc .cmeter { flex: none; display: grid; place-items: center; width: var(--h-sm); height: var(--h-sm); padding: 0; border: 0; border-radius: 50%; background: none; color: var(--ink-muted); cursor: pointer; transition: background var(--ease); }
 .zmc .cmeter[hidden], .zmc .cnote[hidden], .zmc .ctip[hidden] { display: none; }
 .zmc .cmeter svg { width: 16px; height: 16px; transform: rotate(-90deg); }

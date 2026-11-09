@@ -1,8 +1,9 @@
 // Jumping to things in Zotero: the zotero:// links the agent writes, and refs from chips.
 import type { ZoteroRef } from "../types.ts";
 import { findQuote, rangeRects } from "./quote.ts";
+import { selectionPosition } from "./selection.ts";
 
-type Target = ZoteroRef & { page?: string; quote?: string };
+type Target = ZoteroRef & { page?: string };
 
 /** zotero://open-pdf/library/items/KEY?page=8&quote=..., zotero://select/groups/123/items/KEY, .../collections/KEY. */
 export function parseZoteroURI(uri: string): Target | null {
@@ -42,9 +43,9 @@ export async function openTarget(win: any, target: string | ZoteroRef): Promise<
     Zotero.launchURL(target);
     return;
   }
-  const uri = typeof target === "string" ? target : uriFor(target);
-  const ref = parseZoteroURI(uri);
-  if (!ref) throw new Error(`Not a Zotero link: ${uri}`);
+  // Keep structured refs intact: serializing through a URI would discard the saved selection geometry.
+  const ref: Target | null = typeof target === "string" ? parseZoteroURI(target) : target;
+  if (!ref) throw new Error(`Not a Zotero link: ${target}`);
 
   if (ref.collectionKey) {
     const col = Zotero.Collections.getByLibraryAndKey(ref.libraryID, ref.collectionKey);
@@ -56,16 +57,27 @@ export async function openTarget(win: any, target: string | ZoteroRef): Promise<
   if (ref.attachmentKey) {
     const att = Zotero.Items.getByLibraryAndKey(ref.libraryID, ref.attachmentKey);
     if (!att) throw new Error("That attachment no longer exists");
-    const location: Record<string, unknown> | undefined = ref.annotationKey ? { annotationID: ref.annotationKey } : ref.page ? { pageLabel: ref.page } : undefined;
-    if (!ref.quote) { await Zotero.Reader.open(att.id, location); return; }
+    const pageLabel = ref.page ?? ref.pageLabel;
+    const position = selectionPosition(ref.position);
+    const location: Record<string, unknown> | undefined = ref.annotationKey ? { annotationID: ref.annotationKey }
+      : ref.pageIndex != null ? { pageIndex: ref.pageIndex } : pageLabel ? { pageLabel } : undefined;
+    if (ref.annotationKey || (!ref.quote && !position)) { await Zotero.Reader.open(att.id, location); return; }
     // A quote: an open reader just focuses (no page jump first), then flashes the words; never fails.
     const loaded = () => Zotero.Reader._readers.find((r: any) => r.itemID === att.id && !r._isTabClosed);
     const wasOpen = !!loaded();
     let reader = await Zotero.Reader.open(att.id, wasOpen ? undefined : location);
     for (let i = 0; !reader && i < 50; i++) { await Zotero.Promise.delay(100); reader = loaded(); } // a restored tab loads itself
     if (!reader) return;
-    const found = await flashQuote(reader, ref.page, ref.quote).catch((e) => { Zotero.logError(e); return false; });
-    if (!found && wasOpen && location) reader.navigate(location);
+    if (position) {
+      try {
+        await reader._initPromise;
+        await reader._internalReader?._lastView?.initializedPromise;
+        await reader.navigate({ position });
+        return;
+      } catch (e) { Zotero.logError(e); } // older readers can still find the words
+    }
+    const found = ref.quote ? await flashQuote(reader, pageLabel, ref.quote, ref.pageIndex).catch((e) => { Zotero.logError(e); return false; }) : false;
+    if (!found && location) await reader.navigate(location);
     return;
   }
   const item = Zotero.Items.getByLibraryAndKey(ref.libraryID, ref.itemKey!);
@@ -77,7 +89,7 @@ export async function openTarget(win: any, target: string | ZoteroRef): Promise<
 /** Find `quote` on the cited page (or the one before or after) and let the reader flash it for 2 s: the view's
  *  navigate({position}) scrolls there and draws it in the selection color, no annotation is made. False when
  *  the words are not found or the view has no PDF text (EPUB, snapshot, a scan without OCR). */
-async function flashQuote(reader: any, pageLabel: string | undefined, quote: string): Promise<boolean> {
+async function flashQuote(reader: any, pageLabel: string | undefined, quote: string, pageIndex?: number): Promise<boolean> {
   await reader._initPromise;
   const view = reader._internalReader?._lastView;
   if (!view) return false;
@@ -85,7 +97,7 @@ async function flashQuote(reader: any, pageLabel: string | undefined, quote: str
   if (!view._pdfPages || typeof view._ensureBasicPageData !== "function") return false;
   if (pageLabel) await view._pageLabelsPromise;
   const labels: string[] = Array.from(view._pageLabels ?? []);
-  let page = pageLabel ? labels.indexOf(pageLabel) : 0;
+  let page = pageIndex ?? (pageLabel ? labels.indexOf(pageLabel) : 0);
   if (page < 0) page = Math.max(0, (Number(pageLabel) || 1) - 1);
   const count: number = view._iframeWindow?.PDFViewerApplication?.pdfDocument?.numPages ?? page + 1;
   for (const i of [page, page - 1, page + 1]) {

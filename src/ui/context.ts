@@ -1,11 +1,14 @@
 // The context chips on the next message: what the host says the user is looking at (auto), chips the user
 // pinned so they survive focus changes, chips the user dismissed until that item leaves focus, and chips
 // added by hand with `@` or `+`.
-import type { ChipSummary, ContextChip, PanelHost } from "../types.ts";
+import type { ChipSummary, ContextChip, PanelHost, ZoteroRef } from "../types.ts";
 
 export const summary = (c: ContextChip): ChipSummary => ({
-  id: c.id, kind: c.kind, label: c.kind === "selection" ? "Text Selection" : c.label, ref: c.ref, ...(c.text ? { text: c.text.slice(0, 2000) } : {}),
+  id: c.id, kind: c.kind, label: c.kind === "selection" ? "Text Selection" : c.label, ref: c.ref, ...(c.text ? { text: c.kind === "selection" ? c.text : c.text.slice(0, 2000) } : {}),
 });
+
+/** Old transcripts have text and a page but no geometry; they can still find and flash the passage. */
+export const chipTarget = (c: ChipSummary): ZoteroRef => c.kind === "selection" && c.text ? { ...c.ref, quote: c.text } : c.ref;
 
 export class ChipState {
   private added: ContextChip[] = [];

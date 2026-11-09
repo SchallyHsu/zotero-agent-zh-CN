@@ -1,6 +1,11 @@
 # Modification notice / 修改说明
 
-Modification dates: **2026-11-06 – 2026-11-08**. Maintained and published by **SchallyHsu**.
+Modification dates: **2026-11-06 – 2026-11-09**. Maintained and published by **SchallyHsu**.
+Local development update: **2026-11-09**, version **0.15.2.12**: show original
+selected text in the composer and transcript, preserve full passages and PDF
+selection geometry in history, and navigate with a temporary highlight on click.
+Older transcripts use text matching. Added browser, unit and isolated real-XPI
+checks. This local development build has not been published or tagged.
 Local development update: **2026-11-07**, version **0.15.2.4**: named projects,
 native backend session-title/project synchronization, per-paper history and resume,
 legacy metadata migration, settings, localization and regression checks.

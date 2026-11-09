@@ -1,6 +1,7 @@
 // What the user is looking at, as chips. The panel follows focus: the open reader (page, text selection),
 // otherwise the items selected in the library.
-import type { ContextChip, ZoteroRef } from "../types.ts";
+import type { ContextChip, SelectionPosition, ZoteroRef } from "../types.ts";
+import { selectionPosition } from "./selection.ts";
 
 const OBSERVER_ID = "zotero-chat";
 
@@ -37,7 +38,7 @@ export function refOf(item: any, extra: Partial<ZoteroRef> = {}): ZoteroRef {
 
 export class ContextTracker {
   private listeners = new Set<() => void>();
-  private selections = new Map<number, { text: string; pageIndex: number | null; pageLabel: string | null }>();
+  private selections = new Map<number, { text: string; pageIndex: number | null; pageLabel: string | null; position?: SelectionPosition }>();
   private notifierID: string | null = null;
   private disposers: (() => void)[] = [];
   private images = new Map<string, { mime: "image/png"; data: string }>();
@@ -49,7 +50,7 @@ export class ContextTracker {
   private onPopup = (event: any) => {
     const a = event.params?.annotation;
     if (!a?.text || !event.reader?._item) return;
-    this.selections.set(event.reader.itemID, { text: a.text, pageIndex: a.position?.pageIndex ?? null, pageLabel: a.pageLabel ?? null });
+    this.selections.set(event.reader.itemID, { text: a.text, pageIndex: a.position?.pageIndex ?? null, pageLabel: a.pageLabel ?? null, position: selectionPosition(a.position) });
     this.changed();
   };
 
@@ -151,7 +152,7 @@ export class ContextTracker {
     if (!sel) return null;
     return {
       id: `selection:${att.key}`, kind: "selection", label: "Text Selection", auto: true, pinned: false,
-      ref: { ...refOf(att), ...(sel.pageIndex != null ? { pageIndex: sel.pageIndex } : {}), ...(sel.pageLabel ? { pageLabel: sel.pageLabel } : {}) },
+      ref: { ...refOf(att), ...(sel.pageIndex != null ? { pageIndex: sel.pageIndex } : {}), ...(sel.pageLabel ? { pageLabel: sel.pageLabel } : {}), ...(sel.position ? { position: sel.position } : {}) },
       text: sel.text,
     };
   }

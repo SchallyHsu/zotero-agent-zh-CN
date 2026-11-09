@@ -2,6 +2,7 @@
 // (applyEvent keeps untouched ones identical) is patched; inside it only the blocks that changed.
 // A streamed token therefore costs one MdView.set on the last block, whatever the length of the chat.
 import type { ChipSummary } from "../types.ts";
+import { selectionQuote } from "./selection.ts";
 import type { AssistantMessage, Message, NoticeMessage, TranscriptState, UserMessage } from "./transcript.ts";
 import { answerText, textsOf } from "./transcript.ts";
 import { linkCallouts, takeCalloutsDirty } from "./callout.ts";
@@ -157,7 +158,7 @@ class AssistantView {
 
 function chipRow(chips: ChipSummary[], actions: MsgActions): HTMLElement {
   return h("div.ubub__chips", null, chips.map((c) =>
-    h("button.chip.chip--sm", { type: "button", title: c.text ? `${c.label}: ${c.text.slice(0, 300)}` : c.label, ...(c.kind === "image" ? { disabled: true } : { onclick: () => actions.open(c.ref) }) },
+    c.kind === "selection" && c.text ? selectionQuote(c, (target) => actions.open(target)) : h("button.chip.chip--sm", { type: "button", title: c.text ? `${c.label}: ${c.text.slice(0, 300)}` : c.label, ...(c.kind === "image" ? { disabled: true } : { onclick: () => actions.open(c.ref) }) },
       h("span.chip__i", null, icon(CHIP_ICON[c.kind] ?? "item")), h("span.chip__t", null, c.label))));
 }
 

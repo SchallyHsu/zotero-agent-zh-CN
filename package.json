@@ -10,7 +10,9 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "npm run typecheck && npm run preview && npm run test:ui && npm run test:conversations && npm run test:backends && npm run test:usage",
+    "test": "npm run typecheck && npm run preview && npm run test:ui && npm run test:conversations && npm run test:backends && npm run test:usage && npm run test:selection",
+    "test:selection": "node --test test/ui/selection.test.ts test/zotero/open.test.ts test/zotero/quote.test.ts && npm run preview && node test/ui/selection.mjs",
+    "test:xpi-selection": "node scripts/verify-selection.mjs",
     "test:usage": "node --test test/agent/account-usage.test.ts test/agent/other-account-usage.test.mjs test/ui/usage-model.test.ts && node scripts/verify-usage.cjs",
     "test:native-usage": "node scripts/verify-native-usage.mjs",
     "test:native-other-usage": "node scripts/verify-native-other-usage.mjs",

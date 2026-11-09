@@ -30,6 +30,8 @@
   "Add a source": "添加文献来源",
   "Add a source (@)": "添加文献来源（@）",
   "Text Selection": "选中文字",
+  "Go to selected text and highlight": "跳转到原文并高亮",
+  "Remove selected text": "移除选中文字",
   "Selected Area": "选中区域",
   "Pinned: stays when you switch items": "已固定：切换文献时保留",
   "Pin: keep this when you switch items": "固定：切换文献时保留",

@@ -14,7 +14,7 @@ function fnv(s: string): string {
 /** What the agent would read for a chip: same id and same fingerprint means there is nothing new to tell it. */
 export function chipHash(c: ContextChip): string {
   const r = c.ref;
-  return fnv([c.kind, r.libraryID, r.itemKey, r.attachmentKey, r.pageIndex, r.pageLabel, r.annotationKey, r.collectionKey, c.text ?? "", c.image?.data ?? ""].join("\u0001"));
+  return fnv([c.kind, r.libraryID, r.itemKey, r.attachmentKey, r.pageIndex, r.pageLabel, r.annotationKey, r.collectionKey, c.text ?? "", c.image?.data ?? "", ...(c.kind === "selection" && r.position ? [JSON.stringify(r.position)] : [])].join("\u0001"));
 }
 
 /**

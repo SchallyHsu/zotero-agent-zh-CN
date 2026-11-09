@@ -102,6 +102,7 @@ mkdirSync(out, { recursive: true });
   await page.getByRole('button', { name: '历史对话', exact: true }).click();
   await page.getByRole('combobox', { name: '对话分组方式' }).selectOption('paper');
   await page.getByRole('searchbox', { name: '搜索历史对话' }).fill('Zotero Agent');
+  await page.locator('.hrow__main').nth(2).waitFor(); // history is loaded asynchronously
   assert.equal(await page.locator('.hrow__main').count(), 3);
   await page.screenshot({ path: join(out, 'conversations-history.png') });
   await page.getByRole('button', { name: '设置', exact: true }).click();

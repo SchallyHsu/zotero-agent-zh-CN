@@ -3,6 +3,7 @@
 import type { AccountUsage, BackendId, ContextChip, ItemHit, ZoteroRef } from "../types.ts";
 import { CHIP_ICON, append, env, errMessage, h, icon, isMac, setKids } from "./dom.ts";
 import { imageFiles } from "./images.ts";
+import { selectionQuote } from "./selection.ts";
 import type { Fill } from "./economy.ts";
 import { SearchPopup } from "./search.ts";
 import { Pickers } from "./pickers.ts";
@@ -165,6 +166,7 @@ export class Composer {
   }
 
   private chip(c: ContextChip): HTMLElement {
+    if (c.kind === "selection" && c.text) return selectionQuote(c, this.opts.open, () => this.opts.onRemoveChip(c));
     const label = c.kind === "selection" ? "Text Selection" : c.label;
     const tip = c.text ? `${label}: ${c.text.slice(0, 400)}` : label;
     const pin = (c.auto || c.pinned) && c.kind !== "selection"

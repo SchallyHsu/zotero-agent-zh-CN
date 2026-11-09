@@ -9,6 +9,13 @@
 
 // ───────────────────────────── Zotero references ─────────────────────────────
 
+/** A PDF text selection, including the second page when the selection crosses a page break. */
+export interface SelectionPosition {
+  pageIndex: number;
+  rects: number[][];
+  nextPageRects?: number[][];
+}
+
 /** Enough to find a thing in Zotero again. Page numbers are 0-based `pageIndex` plus the printed `pageLabel`. */
 export interface ZoteroRef {
   /** 1 = My Library; a group library's id otherwise. */
@@ -20,6 +27,10 @@ export interface ZoteroRef {
   pageLabel?: string;
   annotationKey?: string;
   collectionKey?: string;
+  /** Captured selection geometry, kept with the transcript so repeated words resolve to the same passage. */
+  position?: SelectionPosition;
+  /** Text to find and temporarily highlight when no saved selection position is available. */
+  quote?: string;
 }
 
 /** A small card of context attached to the next message. */

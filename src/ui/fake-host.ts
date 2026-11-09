@@ -127,7 +127,7 @@ function chipFromHit(hit: ItemHit): ContextChip {
 }
 
 const ITEM_CHIP: ContextChip = { id: "reader:BM2004AB", kind: "reader", label: "Bertrand and Mullainathan 2004", auto: true, pinned: false, ref: { libraryID: 1, itemKey: "BM2004AB", attachmentKey: "ATT00001", pageIndex: 6, pageLabel: "997" } };
-const SELECTION_CHIP: ContextChip = { id: "selection:1", kind: "selection", label: "Text Selection", auto: true, pinned: false, ref: { libraryID: 1, itemKey: "BM2004AB", pageIndex: 6 }, text: "The table reports, for the entire sample and different subsamples of sent resumes, the callback rates for applicants with a White-sounding name." };
+const SELECTION_CHIP: ContextChip = { id: "selection:1", kind: "selection", label: "Text Selection", auto: true, pinned: false, ref: { libraryID: 1, itemKey: "BM2004AB", attachmentKey: "ATT00001", pageIndex: 6, pageLabel: "997", position: { pageIndex: 6, rects: [[72, 640, 400, 652]] } }, text: "The table reports, for the entire sample and different subsamples of sent resumes, the callback rates for applicants with a White-sounding name." };
 const AREA_CHIP: ContextChip = { id: "area:1", kind: "area", label: "Selected Area · p.19", auto: true, pinned: false, ref: { libraryID: 1, itemKey: "LUND2021", pageIndex: 18, pageLabel: "19", annotationKey: "ANNAREA1" }, image: { mime: "image/png", data: AREA_PNG } };
 
 // ───────────────────────────── the scripted agent ─────────────────────────────
