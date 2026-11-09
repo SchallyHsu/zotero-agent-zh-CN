@@ -1,11 +1,11 @@
 # Modification notice / 修改说明
 
 Modification dates: **2026-11-06 – 2026-11-09**. Maintained and published by **SchallyHsu**.
-Local development update: **2026-11-09**, version **0.15.2.12**: show original
+Release update: **2026-11-09**, version **0.15.2.12**: show original
 selected text in the composer and transcript, preserve full passages and PDF
 selection geometry in history, and navigate with a temporary highlight on click.
 Older transcripts use text matching. Added browser, unit and isolated real-XPI
-checks. This local development build has not been published or tagged.
+checks. Update bilingual documentation, source provenance and release artifacts.
 Local development update: **2026-11-07**, version **0.15.2.4**: named projects,
 native backend session-title/project synchronization, per-paper history and resume,
 legacy metadata migration, settings, localization and regression checks.
@@ -42,7 +42,7 @@ language setting (`appearance.language`); update verification and size budget.
 The 0.15.2.4 through 0.15.2.9 development updates were first distributed together
 in release **0.15.2.9**, source tag **zh-CN-v0.15.2.9**. Release **0.15.2.10**
 (**zh-CN-v0.15.2.10**) added the quota display; the current release is
-**0.15.2.11**, source tag **zh-CN-v0.15.2.11**.
+**0.15.2.12**, source tag **zh-CN-v0.15.2.12**.
 This repository is an **unofficial derivative**, not the original Zotero MCP
 project and not an official Zotero product. Original implementation credit belongs
 to the [Zotero MCP contributors](https://github.com/54yyyu/zotero-mcp/graphs/contributors).

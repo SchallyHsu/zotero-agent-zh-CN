@@ -2,17 +2,17 @@
 
 **简体中文** | [English](README.en.md)
 
-**0.15.2.11** 将“额度与用量”更新为工具栏右侧的环形仪表 + 圆角菱形图标（实时反映剩余额度比例，悬停弹出深色胶囊提示，点击查看各额度窗口剩余百分比、重置时间或余额，以及本轮和本对话的 Token 用量），并在“设置 → 外观”中新增**界面语言（Language）**选项，支持在**中文**与 **English** 之间实时切换。支持 Codex、Claude Code、Antigravity、DeepSeek Harness，并按 pi／dsh 当前模型匹配对应服务商的账号。各后端支持范围和实际验证边界见 [额度与用量说明](docs/account-usage.md)；完整改动见 [更新记录](CHANGELOG.md)。
+**0.15.2.12** 在输入框和对话中直接展示**选区原文与页码**，点击原文即可返回 PDF 对应选区并**临时高亮**，恢复历史对话后也能继续定位。长原文完整保存、支持滚动查看和复制；保存精确坐标，避免同页重复句子跳错位置。继续支持**中文／English 实时切换**、额度与用量仪表，以及 Codex、Claude Code、Antigravity、DeepSeek Harness 和 pi。完整改动见 [更新记录](CHANGELOG.md)，额度功能与验证边界见 [额度与用量说明](docs/account-usage.md)。
 
 基于 [54yyyu/zotero-mcp](https://github.com/54yyyu/zotero-mcp) 的 Zotero Agent 插件制作的**非官方简体中文衍生版**。本仓库增加界面汉化、项目与文章对话管理、后端适配和性能优化；原插件的模型接入、文献读取、对话、工具调用等核心功能来自原项目及其贡献者。
 
-**上游版本：** [v0.15.2](https://github.com/54yyyu/zotero-mcp/tree/v0.15.2/plugin) · **上游提交：** [`dfec70c8b772e697476e0b42c1264441cf518686`](https://github.com/54yyyu/zotero-mcp/commit/dfec70c8b772e697476e0b42c1264441cf518686) · **本版：** `0.15.2.11`
+**上游版本：** [v0.15.2](https://github.com/54yyyu/zotero-mcp/tree/v0.15.2/plugin) · **上游提交：** [`dfec70c8b772e697476e0b42c1264441cf518686`](https://github.com/54yyyu/zotero-mcp/commit/dfec70c8b772e697476e0b42c1264441cf518686) · **本版：** `0.15.2.12`
 
 本项目不是 Zotero 或 Zotero MCP 官方发布，不代表原作者背书。请先了解原项目，并将通用功能问题与本仓库的汉化问题区分开。
 
 ## 下载与安装
 
-1. 从 [Releases](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.11) 下载 `zotero-agent-zh-CN-0.15.2.11.xpi`，校验文件为 `SHA256SUMS.txt`。
+1. 从 [Releases](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.12) 下载 `zotero-agent-zh-CN-0.15.2.12.xpi`，校验文件为 `SHA256SUMS.txt`。
 2. 打开 Zotero → **工具 → 插件**，点击齿轮，选择“从文件安装插件”，选取 `.xpi`；按提示重新启动 Zotero。
 3. 从工具栏“文献助手”按钮打开侧栏，完成原插件要求的 `zotero-cli` 和模型后端配置。详细要求见 [上游插件文档](https://github.com/54yyyu/zotero-mcp/blob/v0.15.2/docs/chat-plugin.md)。
 
@@ -21,6 +21,15 @@
 **兼容性：** 上游声明支持 Zotero 7+，实际桌面验证环境为 Windows 11 / Zotero 10.0.7；其他平台及版本尚未逐一实测。
 
 **更新行为：** 保留上游自动更新地址。未来官方版本更新可能将界面恢复为英文；本仓库没有独立的自动更新服务。
+
+## 选区原文与定位
+
+- 在 Zotero 阅读器中选择文字后，输入框上方会直接显示原文及页码，发送后的消息中也会保留。
+- 点击卡片中的原文即可打开对应 PDF、返回选区并临时高亮约 2 秒，不创建永久批注；也支持键盘聚焦后按回车。
+- 长选区可滚动查看，原文完整保存在对话中；拖选卡片中的文字可复制，不会触发跳转。
+- 历史对话保留选区坐标，同页重复句子也能准确定位。旧记录没有坐标时按已保存原文查找；无法匹配时跳转到对应页。
+
+![选区原文与点击高亮：隔离 Zotero 中的合成测试文档](docs/images/selection.png)
 
 ## 项目与文章对话
 
@@ -77,7 +86,7 @@ npm run typecheck
 npm run build
 ```
 
-生成的安装包为 `dist/zotero-agent.xpi`。完整源码、构建脚本、锁文件、许可证与来源说明均在本仓库中；下载对应的 `zh-CN-v0.15.2.11` 源码标签或 Release 附带的完整源码包可获得该发布版的源码。
+生成的安装包为 `dist/zotero-agent.xpi`。完整源码、构建脚本、锁文件、许可证与来源说明均在本仓库中；下载对应的 `zh-CN-v0.15.2.12` 源码标签或 Release 附带的完整源码包可获得该发布版的源码。
 
 ## 验证与开发预览
 
@@ -94,6 +103,8 @@ npm run test:performance
 如需使用已安装的 Edge/Chrome，可设置进程环境变量 `BROWSER_EXECUTABLE` 为其可执行文件路径，再运行界面与性能检查。界面检查和性能比较不需要连接模型服务。
 
 默认 `npm test` 覆盖汉化、项目与文章对话管理及后端适配回归；保留的上游完整测试可运行 `npm run test:upstream`，但在本机遇到符号链接权限和跨平台路径断言失败，未宣称全套测试通过。完整边界见 [验证记录](docs/VALIDATION.md)。
+
+选区原文与点击定位的回归包含在 `npm test` 中，也可单独运行 `npm run test:selection`。真实阅读器验证可运行 `npm run test:xpi-selection`（Windows 默认使用 `D:\Zotero\zotero.exe`，其他路径可设置 `ZMC_ZOTERO_BIN`）：在临时配置和独立文献库中加载打包 XPI，验证高亮及历史恢复，不调用模型推理。
 
 ## 来源、修改与许可证
 
