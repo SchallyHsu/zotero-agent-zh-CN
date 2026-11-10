@@ -1,6 +1,11 @@
 # Modification notice / 修改说明
 
-Modification dates: **2026-11-06 – 2026-11-09**. Maintained and published by **SchallyHsu**.
+Modification dates: **2026-11-06 – 2026-11-10**. Maintained and published by **SchallyHsu**.
+Release update: **2026-11-10**, version **0.15.2.13**: resolve DeepSeek Harness
+ACP model selectors (`["provider","model"]`), route quota lookups to the selected
+`deepseek-account` or `deepseek-official` credentials, keep legacy selector forms
+working, and never send a grant to a non-matching issuer. Added selector parsing
+and provider-dispatch regression tests against real read-only account queries.
 Release update: **2026-11-09**, version **0.15.2.12**: show original
 selected text in the composer and transcript, preserve full passages and PDF
 selection geometry in history, and navigate with a temporary highlight on click.
@@ -42,7 +47,7 @@ language setting (`appearance.language`); update verification and size budget.
 The 0.15.2.4 through 0.15.2.9 development updates were first distributed together
 in release **0.15.2.9**, source tag **zh-CN-v0.15.2.9**. Release **0.15.2.10**
 (**zh-CN-v0.15.2.10**) added the quota display; the current release is
-**0.15.2.12**, source tag **zh-CN-v0.15.2.12**.
+**0.15.2.13**, source tag **zh-CN-v0.15.2.13**.
 This repository is an **unofficial derivative**, not the original Zotero MCP
 project and not an official Zotero product. Original implementation credit belongs
 to the [Zotero MCP contributors](https://github.com/54yyyu/zotero-mcp/graphs/contributors).

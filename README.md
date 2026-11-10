@@ -2,17 +2,17 @@
 
 **简体中文** | [English](README.en.md)
 
-**0.15.2.12** 在输入框和对话中直接展示**选区原文与页码**，点击原文即可返回 PDF 对应选区并**临时高亮**，恢复历史对话后也能继续定位。长原文完整保存、支持滚动查看和复制；保存精确坐标，避免同页重复句子跳错位置。继续支持**中文／English 实时切换**、额度与用量仪表，以及 Codex、Claude Code、Antigravity、DeepSeek Harness 和 pi。完整改动见 [更新记录](CHANGELOG.md)，额度功能与验证边界见 [额度与用量说明](docs/account-usage.md)。
+**0.15.2.13** 修复 **DeepSeek Harness 的“额度与用量”**：dsh 0.2.2 的 ACP 模型值是 `["provider","model"]` 形式的 JSON 选择器，插件现在按 `deepseek-account`（平台账号充值／赠送余额）、`deepseek-official`（API 密钥余额）等实际路由查询，不再提示“无法确定账号”。同时保留 0.15.2.12 的**选区原文与页码**：点击原文即可返回 PDF 对应选区并**临时高亮**，恢复历史对话后也能继续定位。继续支持**中文／English 实时切换**、额度与用量仪表，以及 Codex、Claude Code、Antigravity、DeepSeek Harness 和 pi。完整改动见 [更新记录](CHANGELOG.md)，额度功能与验证边界见 [额度与用量说明](docs/account-usage.md)。
 
 基于 [54yyyu/zotero-mcp](https://github.com/54yyyu/zotero-mcp) 的 Zotero Agent 插件制作的**非官方简体中文衍生版**。本仓库增加界面汉化、项目与文章对话管理、后端适配和性能优化；原插件的模型接入、文献读取、对话、工具调用等核心功能来自原项目及其贡献者。
 
-**上游版本：** [v0.15.2](https://github.com/54yyyu/zotero-mcp/tree/v0.15.2/plugin) · **上游提交：** [`dfec70c8b772e697476e0b42c1264441cf518686`](https://github.com/54yyyu/zotero-mcp/commit/dfec70c8b772e697476e0b42c1264441cf518686) · **本版：** `0.15.2.12`
+**上游版本：** [v0.15.2](https://github.com/54yyyu/zotero-mcp/tree/v0.15.2/plugin) · **上游提交：** [`dfec70c8b772e697476e0b42c1264441cf518686`](https://github.com/54yyyu/zotero-mcp/commit/dfec70c8b772e697476e0b42c1264441cf518686) · **本版：** `0.15.2.13`
 
 本项目不是 Zotero 或 Zotero MCP 官方发布，不代表原作者背书。请先了解原项目，并将通用功能问题与本仓库的汉化问题区分开。
 
 ## 下载与安装
 
-1. 从 [Releases](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.12) 下载 `zotero-agent-zh-CN-0.15.2.12.xpi`，校验文件为 `SHA256SUMS.txt`。
+1. 从 [Releases](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.13) 下载 `zotero-agent-zh-CN-0.15.2.13.xpi`，校验文件为 `SHA256SUMS.txt`。
 2. 打开 Zotero → **工具 → 插件**，点击齿轮，选择“从文件安装插件”，选取 `.xpi`；按提示重新启动 Zotero。
 3. 从工具栏“文献助手”按钮打开侧栏，完成原插件要求的 `zotero-cli` 和模型后端配置。详细要求见 [上游插件文档](https://github.com/54yyyu/zotero-mcp/blob/v0.15.2/docs/chat-plugin.md)。
 
@@ -86,7 +86,7 @@ npm run typecheck
 npm run build
 ```
 
-生成的安装包为 `dist/zotero-agent.xpi`。完整源码、构建脚本、锁文件、许可证与来源说明均在本仓库中；下载对应的 `zh-CN-v0.15.2.12` 源码标签或 Release 附带的完整源码包可获得该发布版的源码。
+生成的安装包为 `dist/zotero-agent.xpi`。完整源码、构建脚本、锁文件、许可证与来源说明均在本仓库中；下载对应的 `zh-CN-v0.15.2.13` 源码标签或 Release 附带的完整源码包可获得该发布版的源码。
 
 ## 验证与开发预览
 

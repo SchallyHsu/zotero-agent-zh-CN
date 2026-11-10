@@ -1,5 +1,12 @@
 # 更新记录
 
+## 0.15.2.13 — 2026-11-10（修复 dsh 额度与用量）
+
+- 修复 DeepSeek Harness 的“额度与用量”始终提示“当前 dsh 模型路由无法确定账号”：dsh 0.2.2 的 ACP 模型选择值是 `["provider","model"]` 形式的 JSON 选择器（如 `["deepseek-official","deepseek-flash"]`），旧适配器按 `provider/model` 解析失败。
+- 按 dsh 实际路由查询：`deepseek-account` 读取 DeepSeek 平台账号的充值／赠送余额；`deepseek-official` 及旧的 `deepseek` 路由读取已保存的 `DEEPSEEK_API_KEY` 余额；其他服务商继续按 `llm-pi-ai/<provider>` 凭据查询。
+- 兼容旧版 `provider/model` 与裸模型 id；缺少 API 密钥、账号未登录、未知路由及账号来源不匹配时给出明确提示，且不向非官方域名发送凭据。
+- 补充中英文提示翻译、额度说明与文档；新增选择器解析、DeepSeek 两条路由分派、旧格式兼容及无网络拒绝回归。使用本机真实 dsh 凭据只读验证两条 DeepSeek 路由均返回余额，未调用模型。
+
 ## 0.15.2.12 — 2026-11-09（选区原文与定位）
 
 - 输入框和已发送消息中的“选中文字”直接展示原文及页码；长原文可滚动查看、复制，按原文保存，不再截断为 2000 字符。
