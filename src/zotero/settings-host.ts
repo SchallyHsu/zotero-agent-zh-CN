@@ -9,6 +9,7 @@ import * as keychain from "./keychain.ts";
 import { PREFIX, prefs } from "./settings.ts";
 import { createStore } from "./store.ts";
 import { projectFolderName } from "../ui/session-model.ts";
+import { acquireChatSync, syncRefs } from "./chat-sync.ts";
 
 export function createSettingsHost(opts: { version: string; win: any; dataDir: string }) {
   const { win, dataDir } = opts;
@@ -23,17 +24,19 @@ export function createSettingsHost(opts: { version: string; win: any; dataDir: s
     return PathUtils.join(docs.exists() ? docs.path : home.path, "Zotero-Agent");
   };
   const chatFolder = () => PathUtils.join(settings().chatFolder || defaultFolder(), projectFolderName(settings().projectName));
-  const store = createStore(PathUtils.join(dataDir, "sessions"));
+  const store = createStore(PathUtils.join(dataDir, "sessions"), syncRefs);
   const images = createImages(win, dataDir);
   const skills = createSkills({ dataDir, win, defaultFolder });
 
   // Read on every context change, so parsed once; dropped whenever the pref changes, from here or elsewhere.
   let cached: PanelSettings | null = null;
   const settings = (): PanelSettings => (cached ??= withDefaults(prefs.json<Partial<PanelSettings>>("settings", {}), Zotero.locale));
+  const cloud = acquireChatSync({ dir: dataDir, win, store, settings: () => withDefaults(prefs.json<Partial<PanelSettings>>("settings", {}), Zotero.locale) });
   const listeners = new Set<() => void>();
   let writing = false;
   const observer = Zotero.Prefs.registerObserver(`${PREFIX}settings`, () => {
     cached = null;
+    cloud.configure();
     if (!writing) for (const cb of [...listeners]) cb();
   }, true);
   const write = (value: string) => {
@@ -45,12 +48,13 @@ export function createSettingsHost(opts: { version: string; win: any; dataDir: s
 
   // Everything but the runtime, which the panel and the pane each bring.
   const host: Omit<SettingsHost, "runtime"> = {
+    chatSync: cloud.api,
     getSettings: settings,
     async setSettings(patch) { write(JSON.stringify({ ...prefs.json("settings", {}), ...patch })); },
     async resetSettings() { write(""); await images.remove(); },
     setApiKey: keychain.setApiKey,
     hasApiKey: async (b: BackendId) => !!(await keychain.getApiKey(b)),
-    clearHistory: () => store.clearAll(),
+    async clearHistory() { await store.clearAll(); cloud.dirty(); },
     async revealWorkspace() {
       await IOUtils.makeDirectory(chatFolder(), { createAncestors: true, ignoreExisting: true });
       Zotero.File.reveal(chatFolder());
@@ -78,7 +82,7 @@ export function createSettingsHost(opts: { version: string; win: any; dataDir: s
     },
   };
   return {
-    host, settings, store, images, skills, chatFolder, defaultFolder,
-    dispose() { Zotero.Prefs.unregisterObserver(observer); listeners.clear(); },
+    host, settings, store, images, skills, chatFolder, defaultFolder, cloud,
+    dispose() { cloud.release(); Zotero.Prefs.unregisterObserver(observer); listeners.clear(); },
   };
 }

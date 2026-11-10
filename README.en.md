@@ -2,11 +2,13 @@
 
 [简体中文](README.md) | **English**
 
+**Prerelease 0.15.2.14** adds **bidirectional WebDAV chat sync and cross-device continuation**. Devices share one conversation transcript, rebuild local model context after remote replies, upload offline changes and preserve concurrent branches. [Download the test XPI and source archive](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.14). See [Chat sync](docs/chat-sync.md) for setup and validation. Actual two-computer use and your WebDAV provider still need validation after configuration.
+
 **0.15.2.13** fixes the **DeepSeek Harness quota panel**: dsh 0.2.2 reports ACP model values as `["provider","model"]` JSON selectors, so the plugin now queries the route actually selected — `deepseek-account` (platform recharge / bonus wallets) or `deepseek-official` (API-key balance) — instead of reporting "cannot determine the account". The **selected source text and page numbers** from 0.15.2.12 remain: click a passage to return to its exact PDF position and **temporarily highlight it**, including after restoring a saved chat. Live **Chinese / English switching**, quota gauges, and Codex, Claude Code, Antigravity, DeepSeek Harness and pi support remain available. See the [Changelog](CHANGELOG.md) and [Account Quota & Usage](docs/account-usage.md).
 
 An **unofficial derivative** of the Zotero Agent plugin from [54yyyu/zotero-mcp](https://github.com/54yyyu/zotero-mcp). This repository adds bilingual UI support (Simplified Chinese & English), project and per-paper conversation management, native backend integrations (Antigravity CLI & DeepSeek Harness), account quota & usage gauges, and localization performance optimizations. Core agent sessions, library access, chat, and tool calls come from the upstream project and its contributors.
 
-**Upstream release:** [v0.15.2](https://github.com/54yyyu/zotero-mcp/tree/v0.15.2/plugin) · **Upstream commit:** [`dfec70c8b772e697476e0b42c1264441cf518686`](https://github.com/54yyyu/zotero-mcp/commit/dfec70c8b772e697476e0b42c1264441cf518686) · **This build:** `0.15.2.13`
+**Upstream release:** [v0.15.2](https://github.com/54yyyu/zotero-mcp/tree/v0.15.2/plugin) · **Upstream commit:** [`dfec70c8b772e697476e0b42c1264441cf518686`](https://github.com/54yyyu/zotero-mcp/commit/dfec70c8b772e697476e0b42c1264441cf518686) · **Current prerelease:** `0.15.2.14` · **Stable:** `0.15.2.13`
 
 This project is not an official Zotero or Zotero MCP release and does not imply endorsement by the original author.
 

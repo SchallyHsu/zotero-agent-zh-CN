@@ -13,6 +13,9 @@ import { SKILL_STYLES } from "./styles-skills.ts";
 import { THINK_STYLES } from "./styles-think.ts";
 
 const BASE = `
+.chat-syncbar { flex: 0 0 auto; padding: 4px 16px; text-align: right; font-size: 11px; color: var(--ink-muted); }
+.chat-syncbar[hidden] { display: none; }
+.chat-syncbar[data-state="error"] { color: var(--warn); }
 :host { display: block; height: 100%; min-width: 0; }
 .zmc, .zmc *, .zmc *::before, .zmc *::after { box-sizing: border-box; }
 .zmc {

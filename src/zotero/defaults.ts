@@ -33,6 +33,7 @@ export const DEFAULT_SETTINGS: PanelSettings = {
   chatFolder: "",
   projectName: "Zotero Agent",
   autoResumePaper: true,
+  chatSync: { enabled: false, url: "", username: "" },
   translate: true,
   translateTo: "en", // withDefaults puts Zotero's own language here
   translateModel: each(""),
@@ -50,6 +51,7 @@ export function withDefaults(saved: Partial<PanelSettings>, locale?: string): Pa
     ...d, ...saved,
     projectName: typeof saved.projectName === "string" && saved.projectName.trim() ? saved.projectName.trim().slice(0, 120) : d.projectName,
     autoResumePaper: typeof saved.autoResumePaper === "boolean" ? saved.autoResumePaper : true,
+    chatSync: { enabled: saved.chatSync?.enabled === true, url: typeof saved.chatSync?.url === "string" ? saved.chatSync.url.trim() : "", username: typeof saved.chatSync?.username === "string" ? saved.chatSync.username : "" },
     model: { ...d.model, ...saved.model }, mode: { ...d.mode, ...saved.mode },
     effort: { ...d.effort, ...saved.effort }, auth: { ...d.auth, ...saved.auth },
     skills: saved.skills && typeof saved.skills === "object" ? saved.skills : {},

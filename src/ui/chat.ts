@@ -1,7 +1,7 @@
 // The conversation: the transcript state, the agent session behind it, and saving. No DOM here; the panel
 // renders `tr` whenever `onChange` fires.
 import type { AgentSession, ChatEvent, ContextChip, PanelHost, PanelSettings, SavedSession } from "../types.ts";
-import { clip, errMessage, nextId } from "./dom.ts";
+import { clip, errMessage, env } from "./dom.ts";
 import { summary } from "./context.ts";
 import { chipHash, planContext } from "./economy.ts";
 import { Persister } from "./persist.ts";
@@ -46,6 +46,9 @@ export class Chat {
   /** Chips this chat has shown in a sent message (id -> fingerprint): the composer stops showing them (isShown). */
   private shown = new Map<string, string>();
   private persister: Persister;
+  private writes: Promise<void> = Promise.resolve();
+  private cloudRefresh: Promise<boolean> | null = null;
+  private remoteDeleted = false;
   private d: ChatDeps;
 
   constructor(deps: ChatDeps) {
@@ -75,7 +78,10 @@ export class Chat {
   private write(ev: ChatEvent): void {
     if (!this.saved) return;
     this.saved = { ...this.saved, updatedAt: Date.now(), ...(this.session ? { agentSessionId: this.session.sessionId } : {}) };
-    this.d.host.appendEvent(this.saved, ev).catch(() => { /* a failed save must not stop the chat */ });
+    const saved = this.saved;
+    this.writes = this.writes.then(() => this.d.host.appendEvent(saved, ev)).catch(() => {
+      this.dispatch({ t: "notice", level: "error", message: "Couldn't save this chat. Check available disk space before closing Zotero." }, false);
+    });
   }
 
   async ensureSession(): Promise<AgentSession> {
@@ -103,7 +109,9 @@ export class Chat {
       this.session = sess;
       this.sent.clear(); // a new or resumed session: everything goes in full once (DESIGN.md "Context budget")
       this.resume = null;
+      const turnNamespace = envId("turn");
       this.unsub = sess.on((ev) => {
+        if ("turn" in ev) ev = { ...ev, turn: `${turnNamespace}_${ev.turn}` };
         this.dispatch(ev);
         if (ev.t === "turn_end") { this.d.turnEnded(ev.stop); this.persister.flush(); }
       });
@@ -127,18 +135,39 @@ export class Chat {
 
   async send(text: string, used: ContextChip[]): Promise<void> {
     if (this.busy || this.d.blockReason()) return;
-    const gen = this.gen;
+    let gen = this.gen;
     const host = this.d.host;
+    this.sending = true;
+    this.d.onChange();
+    // Fetch and reconcile before adding the new user message, so replay never duplicates that message.
+    if (host.chatSync && host.getSettings().chatSync?.enabled) {
+      if (!await this.refreshFromSync(true, true)) { if (gen === this.gen) { this.sending = false; this.d.onChange(); } return; }
+      gen = this.gen;
+      if (this.remoteDeleted) { this.sending = false; this.d.onChange(); return; }
+    }
     if (!this.saved) {
       const paper = host.currentPaper();
-      this.saved = { id: nextId("s") + Date.now().toString(36), title: clip(text, 60), backend: host.getSettings().backend, cwd: this.cwd, agentSessionId: this.session?.sessionId ?? "", updatedAt: Date.now(), lastOpenedAt: Date.now(), projectName: host.getSettings().projectName || DEFAULT_PROJECT, ...(paper ? { paper } : {}) };
+      this.saved = { id: envId("s"), title: clip(text, 60), backend: host.getSettings().backend, cwd: this.cwd, agentSessionId: this.session?.sessionId ?? "", updatedAt: Date.now(), lastOpenedAt: Date.now(), projectName: host.getSettings().projectName || DEFAULT_PROJECT, ...(paper ? { paper } : {}) };
     }
-    this.sending = true;
+    const turnSessionId = this.saved.id;
+    try { host.chatSync?.beginTurn(turnSessionId); }
+    catch (e) { this.sending = false; this.dispatch({ t: "notice", level: "warn", message: errMessage(e) }, false); return; }
+    let history = "";
+    if (this.saved.needsContextReplay) {
+      try {
+        history = await host.chatSync?.continuation(this.saved.id) || "";
+        if (!history) throw Error("Couldn't load the shared conversation context. Try syncing again before continuing.");
+      } catch (e) {
+        host.chatSync?.endTurn(turnSessionId); this.sending = false;
+        this.dispatch({ t: "notice", level: "error", message: errMessage(e) }, false); return;
+      }
+    }
+    if (gen !== this.gen) { host.chatSync?.endTurn(turnSessionId); return; }
     // The bubble shows what the composer showed: context already in this chat is only named to the agent, not shown again.
     const fresh = used.filter((c) => !this.isShown(c));
     for (const c of used) this.shown.set(c.id, chipHash(c));
     this.d.shownChanged();
-    this.dispatch({ t: "user", id: nextId("u") + Date.now().toString(36), text, chips: fresh.map(summary) });
+    this.dispatch({ t: "user", id: envId("u"), text, chips: fresh.map(summary) });
     try {
       const starting = this.ensureSession();
       // The focused paper's metadata and full-text file, prepared while the session starts (never longer than 1.5 s after).
@@ -163,17 +192,22 @@ export class Chat {
       const said = await this.d.expand(text, this.cwd);
       if (gen !== this.gen) return;
       await sess.prompt({
-        text: [ctx.text, said].filter(Boolean).join("\n\n"),
+        text: [history, ctx.text, said].filter(Boolean).join("\n\n"),
         ...(sess.supportsImages && ctx.images.length ? { images: ctx.images } : {}),
       });
+      if (history && this.saved && gen === this.gen) this.saved = await host.saveSession({ ...this.saved, needsContextReplay: false });
     } catch (e) {
       if (gen === this.gen) { this.sending = false; await this.fail(e); }
     } finally {
+      this.persister.flush();
+      await this.writes;
+      host.chatSync?.endTurn(turnSessionId);
       if (gen === this.gen) {
         this.sending = false;
         this.persister.flush();
         this.syncMetadata();
         this.d.onChange();
+        if (host.getSettings().chatSync?.enabled) void this.refreshFromSync();
       }
     }
   }
@@ -255,6 +289,7 @@ export class Chat {
   async reset(): Promise<void> {
     if (this.busy) await this.stop();
     this.persister.flush();
+    await this.writes;
     await this.closeSession();
     this.tr = emptyTranscript();
     this.saved = null;
@@ -263,6 +298,7 @@ export class Chat {
     this.sending = false;
     this.lastContext = [];
     this.shown.clear();
+    this.remoteDeleted = false;
     this.d.shownChanged();
     this.d.onChange();
   }
@@ -270,6 +306,15 @@ export class Chat {
   /** Open a saved chat; the agent is started again (and resumes it) on the next send. */
   async load(s: SavedSession): Promise<void> {
     await this.reset();
+    const gen = this.gen;
+    if (this.d.host.getSettings().chatSync?.enabled) {
+      await this.d.host.chatSync?.sync();
+      if (gen !== this.gen) return;
+      const latest = (await this.d.host.sessions()).find(x => x.id === s.id);
+      if (gen !== this.gen) return;
+      if (!latest) { this.remoteDeleted = true; this.dispatch({ t: "notice", level: "warn", message: "This chat was deleted on another device. Start a new chat." }, false); return; }
+      s = latest;
+    }
     try {
       this.tr = replay(await this.d.host.loadEvents(s.id));
       // A save that ends mid-turn (a crash) must not look like it is still streaming.
@@ -284,4 +329,45 @@ export class Chat {
   }
 
   flush(): void { this.persister.flush(); }
+
+  /** A cloud update must reach the agent's context as well as the visible transcript. */
+  refreshFromSync(download = true, beforeSend = false): Promise<boolean> {
+    if (!this.d.host.chatSync || !this.d.host.getSettings().chatSync?.enabled || (this.busy && !beforeSend)) return Promise.resolve(true);
+    if (this.cloudRefresh) return this.cloudRefresh;
+    const gen = this.gen, host = this.d.host, id = this.saved?.id;
+    const run = (async () => {
+      this.persister.flush(); await this.writes;
+      if (download) await host.chatSync!.sync();
+      if (gen !== this.gen) return false;
+      if (!id) return true;
+      const s = (await host.sessions()).find(x => x.id === id);
+      if (gen !== this.gen) return false;
+      if (!s) {
+        this.remoteDeleted = true;
+        if (this.session) await this.closeSession();
+        this.dispatch({ t: "notice", level: "warn", message: "This chat was deleted on another device. Start a new chat." }, false);
+        return true;
+      }
+      if (s.contentVersion !== this.saved?.contentVersion || s.needsContextReplay) {
+        const events = await host.loadEvents(id);
+        if (gen !== this.gen) return false;
+        if (s.needsContextReplay && (this.session || this.starting)) await this.closeSession();
+        const users = new Set(events.flatMap(e => e.t === "user" ? [e.id] : []));
+        const branched = this.tr.messages.some(m => m.role === "user" && !users.has(m.id));
+        this.tr = replay(events);
+        if (this.tr.running) this.tr = applyEvent(this.tr, { t: "turn_end", turn: this.tr.running, stop: "cancelled" });
+        if (branched) this.tr = applyEvent(this.tr, { t: "notice", level: "warn", message: "Concurrent replies were preserved as a separate chat marked [fork] in History." });
+        this.resume = s;
+      }
+      this.saved = s;
+      this.d.onChange();
+      return true;
+    })().catch(e => { this.dispatch({ t: "notice", level: "warn", message: errMessage(e) }, false); return false; });
+    this.cloudRefresh = run;
+    void run.finally(() => { if (this.cloudRefresh === run) this.cloudRefresh = null; });
+    return run;
+  }
 }
+
+// User messages, logical chats and turn namespaces must stay unique across devices and process restarts.
+const envId = (prefix: string) => `${prefix}_${env.win.crypto.randomUUID()}`;

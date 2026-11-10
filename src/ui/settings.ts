@@ -10,6 +10,7 @@ import { confirmAction, hint, radios, section, seg, selectField, sub, switchRow 
 import { appearanceCard } from "./settings-look.ts";
 import { skillsCard } from "./settings-skills.ts";
 import { BACKEND_LABEL, BACKENDS, frame } from "./views.ts";
+import { syncCard } from "./settings-sync.ts";
 
 type CatState = { state: "loading" } | { state: "ok"; catalog: Catalog } | { state: "error"; error: string };
 
@@ -58,6 +59,7 @@ export function settingsView(host: SettingsHost, o: SettingsDeps): { el: HTMLEle
     render();
   };
   const appearance = appearanceCard(host, o.look, saveLook, () => render());
+  const cloud = syncCard(host, () => render());
   const skills = skillsCard(host, { save, rerender: () => render(), ...(o.createSkill ? { createSkill: o.createSkill } : {}) });
   const flag = (key: FlagKey, label: string, help: string) => switchRow(label, help, host.getSettings()[key], (on) => void save(setFlag(key, on)));
 
@@ -228,7 +230,7 @@ export function settingsView(host: SettingsHost, o: SettingsDeps): { el: HTMLEle
         flag("showUsage", "Show tokens and cost", "A small line under each answer. Off by default."),
         flag("openAtStart", "Open the panel when Zotero starts", ""),
       ),
-      translate(s), skills(), projects(s), folder(s), data(), about(s),
+      translate(s), skills(), projects(s), cloud(), folder(s), data(), about(s),
       h("div.set__saved", { role: "status", "aria-live": "polite" }, h("span", null, saved)));
     if (scroller) scroller.scrollTop = top;
     if (fid) (body.querySelector(`[data-fid="${CSS.escape(fid)}"]`) as HTMLElement | null)?.focus({ preventScroll: true });

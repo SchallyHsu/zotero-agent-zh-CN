@@ -10,7 +10,9 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "npm run typecheck && npm run preview && npm run test:ui && npm run test:conversations && npm run test:backends && npm run test:usage && npm run test:selection",
+    "test": "npm run typecheck && npm run preview && npm run test:ui && npm run test:conversations && npm run test:backends && npm run test:usage && npm run test:selection && npm run test:chat-sync",
+    "test:chat-sync": "node --test test/sync/chat-sync.test.ts && node scripts/verify-chat-sync.cjs",
+    "test:xpi-chat-sync": "node scripts/verify-chat-sync-xpi.mjs",
     "test:selection": "node --test test/ui/selection.test.ts test/zotero/open.test.ts test/zotero/quote.test.ts && npm run preview && node test/ui/selection.mjs",
     "test:xpi-selection": "node scripts/verify-selection.mjs",
     "test:usage": "node --test test/agent/account-usage.test.ts test/agent/other-account-usage.test.mjs test/ui/usage-model.test.ts && node scripts/verify-usage.cjs",

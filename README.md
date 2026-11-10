@@ -2,11 +2,13 @@
 
 **简体中文** | [English](README.en.md)
 
+**0.15.2.14 预发布测试版** 增加 **WebDAV 聊天双向同步与跨设备续聊**：各设备共享同一段聊天的历史，收到新消息后用最新上下文接续本机后端；离线补传，并发内容保留分支。[下载测试版安装包与源码](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.14)。设置方式、同步范围及验证边界见 [聊天同步说明](docs/chat-sync.md)。实际两台电脑和具体 WebDAV 服务仍需配置后验证。
+
 **0.15.2.13** 修复 **DeepSeek Harness 的“额度与用量”**：dsh 0.2.2 的 ACP 模型值是 `["provider","model"]` 形式的 JSON 选择器，插件现在按 `deepseek-account`（平台账号充值／赠送余额）、`deepseek-official`（API 密钥余额）等实际路由查询，不再提示“无法确定账号”。同时保留 0.15.2.12 的**选区原文与页码**：点击原文即可返回 PDF 对应选区并**临时高亮**，恢复历史对话后也能继续定位。继续支持**中文／English 实时切换**、额度与用量仪表，以及 Codex、Claude Code、Antigravity、DeepSeek Harness 和 pi。完整改动见 [更新记录](CHANGELOG.md)，额度功能与验证边界见 [额度与用量说明](docs/account-usage.md)。
 
 基于 [54yyyu/zotero-mcp](https://github.com/54yyyu/zotero-mcp) 的 Zotero Agent 插件制作的**非官方简体中文衍生版**。本仓库增加界面汉化、项目与文章对话管理、后端适配和性能优化；原插件的模型接入、文献读取、对话、工具调用等核心功能来自原项目及其贡献者。
 
-**上游版本：** [v0.15.2](https://github.com/54yyyu/zotero-mcp/tree/v0.15.2/plugin) · **上游提交：** [`dfec70c8b772e697476e0b42c1264441cf518686`](https://github.com/54yyyu/zotero-mcp/commit/dfec70c8b772e697476e0b42c1264441cf518686) · **本版：** `0.15.2.13`
+**上游版本：** [v0.15.2](https://github.com/54yyyu/zotero-mcp/tree/v0.15.2/plugin) · **上游提交：** [`dfec70c8b772e697476e0b42c1264441cf518686`](https://github.com/54yyyu/zotero-mcp/commit/dfec70c8b772e697476e0b42c1264441cf518686) · **当前测试版：** `0.15.2.14` · **正式版：** `0.15.2.13`
 
 本项目不是 Zotero 或 Zotero MCP 官方发布，不代表原作者背书。请先了解原项目，并将通用功能问题与本仓库的汉化问题区分开。
 
@@ -42,7 +44,7 @@
 - **Claude Code / pi**：以项目工作目录组织会话，用 ACP bridge 已安装的 SDK 重命名。Claude Code 会重新读取原生目录项目确认名称和归属，已使用真实官方 SDK 验证。旧会话保留原始目录，新会话进入设置中的项目子目录。这些目录项目不等同于 Claude 网页版 Projects。
 - **Antigravity**：安装 App 与 `agy` 后，在原生项目内预建会话，再通过 ACP 接续并共享 App 存储。旧 CLI 对话通过一致性快照和原生分叉接续到项目，原对话保留；名称同步到原生摘要，首条回复前会保持待处理状态。
 - **DeepSeek Harness**：通过本地配套扩展同步到 dsh 原生工作区，首次安装后需完全退出并重开 dsh Desktop / Web 宿主一次。之后新会话自动归类，旧会话按原 ID 回填；未收到原生确认时显示待处理状态。
-- 项目及历史保存在本机，不通过 Zotero 文献同步。元数据同步不调用模型、不额外发送论文或对话正文。
+- 项目及历史保存在本机；启用“聊天同步”后另通过 WebDAV 同步，不通过 Zotero 文献同步。原生项目元数据同步不调用模型；跨设备上下文接续会把保存的聊天作为下一次模型请求的上下文。
 
 ## 额度与用量
 

@@ -22,6 +22,7 @@ import { welcomeView } from "./welcome.ts";
 import { localizeRoot } from "./localize.ts";
 import { enabledSkills, invocationText, parseInvocation, pinned, skillPath } from "./skills-model.ts";
 import { latestPaperSession, paperKey } from "./session-model.ts";
+import { SYNC_LABELS } from "./settings-sync.ts";
 
 type View = "chat" | "history" | "settings" | "status" | "welcome";
 
@@ -69,6 +70,8 @@ class Panel {
   private disposed = false;
   private drafts = new Map<string, { text: string; chips: ReturnType<ChipState["draft"]> }>();
   private navigation: Promise<void> = Promise.resolve();
+  private cloudBar = h("div.chat-syncbar", { hidden: true });
+  private initialCloud = true;
 
   constructor(root: ShadowRoot, host: PanelHost) {
     this.root = root;
@@ -142,7 +145,7 @@ class Panel {
       btn("New chat", "plus", () => void this.newChat()), this.historyBtn,
       h("span.hd__fill"), this.statusBtn,
       btn("Settings", "gear", () => this.show(this.view === "settings" ? "chat" : "settings")));
-    this.chatEl = h("div.chat", null, this.feed.el, h("div.dock", null, this.setupSlot, this.composer.el));
+    this.chatEl = h("div.chat", null, this.cloudBar, this.feed.el, h("div.dock", null, this.setupSlot, this.composer.el));
     this.viewEl = h("div.viewhost", { hidden: true });
     this.app = h("div.zmc", { dataset: { theme: host.theme(), view: "chat" }, onkeydown: (e: KeyboardEvent) => this.onKey(e) }, hd, h("div.body", null, this.chatEl, this.viewEl));
     this.look = new Look(this.app, host);
@@ -151,6 +154,25 @@ class Panel {
 
     this.disposers.push(host.onContextChange(() => { this.refreshChips(); void this.followPaper(); }), host.onThemeChange(() => { this.app.dataset.theme = host.theme(); }),
       host.onSettingsChange(() => this.onOutsideSettings()));
+    if (host.chatSync) {
+      const changed = () => {
+        const state = host.chatSync!.status();
+        this.cloudBar.hidden = !host.getSettings().chatSync?.enabled;
+        this.cloudBar.dataset.state = state.state;
+        setKids(this.cloudBar, h("button.lnk", { type: "button", title: state.message, onclick: () => this.show("settings", "[data-chat-sync]") }, SYNC_LABELS[state.state]));
+        if (state.state === "ok") {
+          void this.chat.refreshFromSync(false);
+          if (this.view === "history") this.activeView?.refresh?.();
+          if (this.initialCloud && !this.chat.saved && !this.composer.draftText()) { this.focusedPaper = ""; void this.followPaper(); }
+          this.initialCloud = false;
+        }
+        if (this.view === "settings") this.activeView?.render?.();
+      };
+      const focus = () => { if (!this.disposed) { void this.chat.refreshFromSync(); void host.chatSync!.sync(); } };
+      env.win.addEventListener("focus", focus);
+      this.disposers.push(host.chatSync.subscribe(changed), () => env.win.removeEventListener("focus", focus));
+      changed();
+    }
     this.refreshChips();
     this.onHealth();
     this.applyBehavior();

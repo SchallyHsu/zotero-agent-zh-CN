@@ -28,3 +28,17 @@ export async function setApiKey(backend: BackendId, key: string | null): Promise
   const LoginInfo = Components.Constructor("@mozilla.org/login-manager/loginInfo;1", Ci.nsILoginInfo, "init");
   await Services.logins.addLoginAsync(new LoginInfo(ORIGIN, null, realm(backend), "api-key", key, "", ""));
 }
+
+const syncRealm = (url: string) => `Chat WebDAV ${url.trim().replace(/\/+$/, "")}`;
+export async function getSyncPassword(url: string, username: string): Promise<string | null> {
+  const logins = await Services.logins.searchLoginsAsync({ origin: ORIGIN, httpRealm: syncRealm(url) });
+  return logins.find((l: any) => l.username === username)?.password ?? null;
+}
+export async function setSyncPassword(url: string, username: string, password: string): Promise<void> {
+  const realm = syncRealm(url);
+  const logins = await Services.logins.searchLoginsAsync({ origin: ORIGIN, httpRealm: realm });
+  for (const login of logins) if (login.username === username) Services.logins.removeLogin(login);
+  if (!password) return;
+  const LoginInfo = Components.Constructor("@mozilla.org/login-manager/loginInfo;1", Ci.nsILoginInfo, "init");
+  await Services.logins.addLoginAsync(new LoginInfo(ORIGIN, null, realm, username, password, "", ""));
+}

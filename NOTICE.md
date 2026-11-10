@@ -1,6 +1,12 @@
 # Modification notice / 修改说明
 
 Modification dates: **2026-11-06 – 2026-11-10**. Maintained and published by **SchallyHsu**.
+Prerelease update: **2026-11-10**, version **0.15.2.14**: optional
+WebDAV chat synchronization, conditional writes, stable event identities,
+offline reconciliation, conflict branches and deletion tombstones. Native
+session bindings remain local; remote messages rebuild local agent context.
+Added bilingual settings, loopback two-device tests and isolated real-XPI checks.
+Distributed as a prerelease; validation boundaries are documented in docs/chat-sync.md.
 Release update: **2026-11-10**, version **0.15.2.13**: resolve DeepSeek Harness
 ACP model selectors (`["provider","model"]`), route quota lookups to the selected
 `deepseek-account` or `deepseek-official` credentials, keep legacy selector forms

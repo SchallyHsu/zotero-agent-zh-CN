@@ -8,7 +8,7 @@ import { fakeAccountUsage } from "./fake-usage.ts";
 import { paperFromChips, projectFolderName } from "./session-model.ts";
 import type {
   AgentRuntime, AgentSession, BackendId, BackendStatus, Catalog, ChatEvent, ContextChip, DoctorCheck, ItemHit, NoteRequest, PanelHost,
-  PanelSettings, PermissionOption, PromptInput, SavedSession, StartOpts, ZoteroRef,
+  PanelSettings, PermissionOption, PromptInput, SavedSession, StartOpts, ZoteroRef, ChatSyncHost,
 } from "../types.ts";
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -272,6 +272,13 @@ class FakeSession implements AgentSession {
 // ───────────────────────────── the host ─────────────────────────────
 
 export class FakeHost implements PanelHost {
+  private syncPassword = "";
+  chatSync: ChatSyncHost = {
+    status: () => ({ state: this.settings.chatSync?.enabled ? "ok" : "off" }),
+    sync: async () => {}, subscribe: () => () => {},
+    setPassword: async p => { this.syncPassword = p; }, hasPassword: async () => !!this.syncPassword,
+    beginTurn() {}, endTurn() {}, continuation: async () => "",
+  };
   readonly sim: Sim;
   readonly runtime: AgentRuntime;
   readonly skills = new FakeSkills();

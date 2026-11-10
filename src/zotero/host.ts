@@ -17,6 +17,7 @@ import { syncSessionMetadata } from "../agent/session-metadata.ts";
 import { paperFromChips } from "../ui/session-model.ts";
 import { cleanEnv, findBinary } from "../agent/env.ts";
 import { readPackagedText } from "./resource.ts";
+import { libraryKey } from "./chat-sync.ts";
 
 export interface HostBundle {
   host: PanelHost;
@@ -133,11 +134,12 @@ export function createHost(opts: { id: string; version: string; rootURI?: string
       const p = paperFromChips(context.current(win));
       if (!p) return null;
       const item = Zotero.Items.getByLibraryAndKey(p.libraryID, p.itemKey);
-      return { ...p, title: item?.getDisplayTitle() || p.title };
+      return { ...p, libraryKey: libraryKey(p.libraryID), title: item?.getDisplayTitle() || p.title };
     },
-    saveSession: (s) => store.saveSession(s),
+    async saveSession(s) { return store.saveSession(s); },
     async renameSession(id, title) {
       const s = await store.renameSession(id, title);
+      sh.cloud.dirty();
       return s.agentSessionId ? host.syncSession(s) : s;
     },
     syncSession(s) {
@@ -182,7 +184,7 @@ export function createHost(opts: { id: string; version: string; rootURI?: string
     },
     loadEvents: (id) => store.loadEvents(id),
     appendEvent: (s, ev) => store.appendEvent(s, ev),
-    deleteSession: (id) => store.deleteSession(id),
+    async deleteSession(id) { await store.deleteSession(id); sh.cloud.dirty(); },
     async saveFile(name, data, mime) {
       const fp = Cc["@mozilla.org/filepicker;1"].createInstance(Ci.nsIFilePicker);
       const ext = /\.([a-z0-9]{1,5})$/i.exec(name)?.[1]?.toLowerCase() ?? "";

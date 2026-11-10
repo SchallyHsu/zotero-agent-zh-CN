@@ -20,6 +20,8 @@ export interface SelectionPosition {
 export interface ZoteroRef {
   /** 1 = My Library; a group library's id otherwise. */
   libraryID: number;
+  /** Stable Zotero account/group identity, remapped to libraryID on this device. */
+  libraryKey?: string;
   itemKey?: string;
   /** The PDF/EPUB/snapshot attachment, when the thing lives in one. */
   attachmentKey?: string;
@@ -356,6 +358,8 @@ export interface PanelSettings {
   projectName: string;
   /** Restore the last conversation when the focused paper changes. */
   autoResumePaper: boolean;
+  /** Independent chat sync; passwords are stored by the login manager. */
+  chatSync?: { enabled: boolean; url: string; username: string };
 
   // Translate, in the reader's text selection popup.
   /** The popup shows a Translate button. */
@@ -389,7 +393,24 @@ export interface Appearance {
   density: "compact" | "comfortable";
 }
 
-export interface PaperIdentity { libraryID: number; itemKey: string; title: string }
+export interface PaperIdentity { libraryID: number; libraryKey?: string; itemKey: string; title: string }
+
+export interface ChatSyncStatus {
+  state: "off" | "pending" | "syncing" | "ok" | "error";
+  lastSyncedAt?: number;
+  message?: string;
+}
+export interface ChatSyncHost {
+  status(): ChatSyncStatus;
+  /** Network failures leave local history intact and are reported through status(). */
+  sync(): Promise<void>;
+  subscribe(listener: () => void): () => void;
+  setPassword(password: string): Promise<void>;
+  hasPassword(): Promise<boolean>;
+  beginTurn(id: string): void;
+  endTurn(id: string): void;
+  continuation(id: string): Promise<string>;
+}
 
 export interface SavedSession {
   id: string;
@@ -411,6 +432,9 @@ export interface SavedSession {
   /** The DSH GUI companion has not yet acknowledged native workspace ownership. */
   syncPending?: boolean;
   backendSyncVersion?: number;
+  /** Local cache generation and whether a new agent needs the shared transcript. Never uploaded. */
+  contentVersion?: string;
+  needsContextReplay?: boolean;
 }
 
 export interface DoctorCheck {
@@ -424,6 +448,7 @@ export interface DoctorCheck {
 
 /** What `ui/` needs from the outside world. Implemented by zotero/host.ts; ui/ ships a fake for preview and tests. */
 export interface PanelHost {
+  chatSync?: ChatSyncHost;
   runtime: AgentRuntime;
   skills: SkillHost;
 
@@ -494,7 +519,7 @@ export interface PanelHost {
 
 /** What the settings screen needs, and all that Zotero's Settings pane provides (zotero/settings-host.ts). */
 export type SettingsHost = Pick<PanelHost, "getSettings" | "setSettings" | "resetSettings" | "setApiKey" | "hasApiKey" | "clearHistory" | "revealWorkspace"
-  | "about" | "chooseFolder" | "chooseImage" | "loadImage" | "removeImage" | "theme" | "onThemeChange" | "onSettingsChange" | "skills"> & { runtime: Pick<AgentRuntime, "detect" | "catalog"> };
+  | "about" | "chooseFolder" | "chooseImage" | "loadImage" | "removeImage" | "theme" | "onThemeChange" | "onSettingsChange" | "skills" | "chatSync"> & { runtime: Pick<AgentRuntime, "detect" | "catalog"> };
 
 /** The only function the UI layer exports to the bootstrap: render into a shadow root, return a disposer. `runPrompt` runs the prompt or skill pinned to that slot. */
 export type MountPanel = (root: ShadowRoot, host: PanelHost) => { dispose(): void; focusComposer(): void; runPrompt(slot: number): void };
