@@ -35,6 +35,7 @@ export function mountSettings(root: ShadowRoot, host: SettingsHost, catalogReady
   const stopLocale = localizeRoot(root);
   const offs = [
     stopLocale,
+    ...(host.chatSync ? [host.chatSync.subscribe(() => view.render())] : []),
     host.onThemeChange(() => { app.dataset.theme = host.theme(); }),
     host.onSettingsChange(() => {
       const now = host.getSettings().appearance.image;

@@ -8,7 +8,7 @@ import { fakeAccountUsage } from "./fake-usage.ts";
 import { paperFromChips, projectFolderName } from "./session-model.ts";
 import type {
   AgentRuntime, AgentSession, BackendId, BackendStatus, Catalog, ChatEvent, ContextChip, DoctorCheck, ItemHit, NoteRequest, PanelHost,
-  PanelSettings, PermissionOption, PromptInput, SavedSession, StartOpts, ZoteroRef, ChatSyncHost,
+  PanelSettings, PermissionOption, PromptInput, SavedSession, StartOpts, ZoteroRef, ChatSyncHost, ChatSyncStatus,
 } from "../types.ts";
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -273,9 +273,12 @@ class FakeSession implements AgentSession {
 
 export class FakeHost implements PanelHost {
   private syncPassword = "";
+  private syncState: ChatSyncStatus | undefined;
+  private syncListeners = new Set<() => void>();
+  setSyncStatus(status: ChatSyncStatus) { this.syncState = status; for (const f of this.syncListeners) f(); }
   chatSync: ChatSyncHost = {
-    status: () => ({ state: this.settings.chatSync?.enabled ? "ok" : "off" }),
-    sync: async () => {}, subscribe: () => () => {},
+    status: () => this.syncState ?? ({ state: this.settings.chatSync?.enabled ? "ok" : "off" }),
+    sync: async () => {}, subscribe: f => { this.syncListeners.add(f); return () => { this.syncListeners.delete(f); }; },
     setPassword: async p => { this.syncPassword = p; }, hasPassword: async () => !!this.syncPassword,
     beginTurn() {}, endTurn() {}, continuation: async () => "",
   };

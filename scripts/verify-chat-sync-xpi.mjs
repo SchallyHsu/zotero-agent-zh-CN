@@ -23,7 +23,7 @@ const server = createServer(async (req, res) => {
   if (req.method === "MKCOL") { directory = true; res.writeHead(201).end(); return; }
   if (req.method === "GET") { res.writeHead(body ? 200 : 404, body ? { ETag: `"${version}"`, "Content-Type": "application/json" } : {}); res.end(body || ""); return; }
   if (req.method === "PUT") {
-    if (!directory) { res.writeHead(409).end(); return; }
+    if (!directory) { req.socket.destroy(); return; }
     if ((req.headers["if-none-match"] === "*" && body) || (req.headers["if-match"] && req.headers["if-match"] !== `"${version}"`)) { res.writeHead(412).end(); return; }
     const chunks = []; for await (const c of req) chunks.push(c); body = Buffer.concat(chunks).toString(); version++; res.writeHead(201).end(); return;
   }

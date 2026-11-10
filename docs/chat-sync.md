@@ -1,14 +1,21 @@
-# 聊天同步 / Chat sync — 0.15.2.14 预发布测试版
+# 聊天同步 / Chat sync — 0.15.2.15 预发布测试版
 
 ## 使用
 
-1. 各台电脑安装 [Release](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.14) 中的 `zotero-agent-zh-CN-0.15.2.14.xpi`，并各自完成模型后端登录。这是预发布测试版。
+1. 各台电脑安装 [Release](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.15) 中的 `zotero-agent-zh-CN-0.15.2.15.xpi`，并各自完成模型后端登录。这是预发布测试版。
 2. 打开插件“设置 → 聊天同步”，填写同一个 WebDAV **现有目录**地址、用户名和密码，打开“跨设备同步聊天”，点击“保存并同步”。Zotero 账号中已有的附件同步设置不会自动启用聊天同步。
 3. 在另一台电脑填写相同配置。出现“聊天已同步”后，从历史打开同一段聊天接着聊。也可以点击“立即同步”。
 
 插件会在指定目录下新建 `zotero-agent-chat/v1.json`，不操作 Zotero 附件。允许复用同一 WebDAV 服务。服务必须支持强 ETag 和 `If-Match` / `If-None-Match` 条件写入；不支持时显示原因，保留本地记录。目录地址不允许嵌入密码、查询参数或片段；密码单独保存在 Zotero 登录管理器中。普通 HTTPS WebDAV 可使用；HTTP 留给局域网或回环测试。
 
 每轮完成后上传，打开聊天、返回窗口及发送前同步；插件打开期间每 30 秒检查。同步以完整回复为单位，其他设备看到更新可能需要等待一次轮询。离线允许继续聊天，状态栏显示连接错误或待同步，重连后补传。
+
+### 连接问题
+
+- **登录失败 / HTTP 401**：插件与 Zotero 附件同步各自保存密码。“密码已保存”只表示本机存在记录；若复用同一 WebDAV 服务，请核对两处使用的凭据。更新插件不会自动改写其他设备的密码。
+- **目录权限 / HTTP 403**：确认账号可以在配置的目录内创建聊天目录并读写文件。
+- **首次上传中断 / HTTP 0**：0.15.2.15 会先创建聊天专用目录，避免部分服务在父目录不存在时直接断开上传连接。已安装 0.15.2.14 的设备可更新此修复版。
+- **设置窗口状态未更新**：0.15.2.15 已修复独立设置窗口的状态订阅；后台请求完成后会显示实际成功或错误状态。
 
 ## 续聊和冲突
 
@@ -40,7 +47,7 @@ npm run test:xpi-chat-sync
 
 测试包括两个隔离磁盘存储及各自后端会话的 A→B→A 接续、真实回环 HTTP/WebDAV、重复同步、条件写入竞争、离线补传、分支收敛、删除期间的离线编辑、选区坐标与本地库 ID 映射、异常远端格式及弱 ETag 拒绝。
 
-真实 Zotero/XPI 测试使用独立配置、独立文献库和合成登录凭据，验证 Gecko 网络请求、登录管理器、远端新增轮次导入、上下文重建材料和历史显示。界面测试覆盖中英文、默认关闭、密码遮罩和配置保存。没有连接用户实际 WebDAV，也没有调用真实模型；真实两台电脑及具体 WebDAV 服务仍需要配置后验证。
+真实 Zotero/XPI 测试使用独立配置、独立文献库和合成登录凭据，验证 Gecko 网络请求、登录管理器、远端新增轮次导入、上下文重建材料和历史显示。界面测试覆盖中英文、默认关闭、密码遮罩、配置保存，以及独立设置窗口的后台状态刷新。0.15.2.15 另在现有 Windows/Zotero 和实际 WebDAV 服务上验证了首次上传及重复同步，未调用真实模型。真实两台电脑的完整续聊仍需要多设备验证。
 
 ## English quick start
 
@@ -48,4 +55,4 @@ Install the accompanying XPI on each desktop. Open **Settings → Chat sync**, e
 
 Chats use `zotero-agent-chat/v1.json` under the configured folder. Strong ETags and conditional writes are required. Native model sessions and credentials remain local. Remote additions rebuild model context in the same plugin chat. Concurrent offline continuations become complete `[fork]` branches; deletion tombstones prevent resurrection. PDFs sync separately through Zotero. Historical pasted images are not restored. Long context is bounded with a full local transcript file available to the model.
 
-Validation uses synthetic data, two isolated stores, loopback WebDAV, browser tests and an isolated real Zotero/XPI. No real provider inference or user WebDAV server was used. This build is distributed as a prerelease for testing.
+Validation uses synthetic data, two isolated stores, loopback WebDAV, browser tests and an isolated real Zotero/XPI. Version 0.15.2.15 also verified initial upload and repeated synchronization with an existing Windows/WebDAV deployment, without real model inference. Complete cross-device continuation still needs multi-device validation. This build is distributed as a prerelease for testing.

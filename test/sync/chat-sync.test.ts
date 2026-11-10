@@ -49,7 +49,8 @@ async function server() {
     if (req.method === "MKCOL") { const code = directory ? 405 : 201; directory = true; res.writeHead(code).end(); return; }
     if (req.method === "GET") { res.writeHead(body ? 200 : 404, body ? { ETag: `${weak ? "W/" : ""}"${version}"` } : {}); res.end(body ?? ""); return; }
     if (req.method === "PUT") {
-      if (!directory) { res.writeHead(409).end(); return; }
+      // rclone can reset an upload to a missing collection before Gecko sees a 409.
+      if (!directory) { req.socket.destroy(); return; }
       if ((req.headers["if-none-match"] === "*" && body) || (req.headers["if-match"] && req.headers["if-match"] !== `"${version}"`)) { collisions++; res.writeHead(412).end(); return; }
       const chunks = []; for await (const c of req) chunks.push(c);
       body = Buffer.concat(chunks).toString(); version++; res.writeHead(201, { ETag: `"${version}"` }).end(); return;
@@ -178,6 +179,7 @@ test("conditional creation retries a competing writer and never replaces a chang
       return { status: r.status, text: await r.text(), etag: r.headers.get("ETag") || undefined };
     });
     assert.equal(await dav.write(emptyDocument()), true);
+    assert.deepEqual(s.requests.slice(0,2), ["MKCOL", "PUT"], "create the collection before a potentially large upload");
     assert.equal(await dav.write(emptyDocument()), false);
     assert.equal(await dav.write(emptyDocument(), '"stale"'), false);
     assert.equal(s.collisions(), 2);

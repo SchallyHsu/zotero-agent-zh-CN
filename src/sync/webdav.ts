@@ -25,18 +25,21 @@ export class WebDAV {
     const body = encodeDocument(doc);
     checkSize(body);
     const headers = { "Content-Type": "application/json; charset=utf-8", ...(etag ? { "If-Match": etag } : { "If-None-Match": "*" }) };
-    let r = await this.request("PUT", this.urls.file, headers, body);
-    if (r.status === 409 && !etag) {
+    // Some servers close the connection before reading a large PUT to a missing
+    // parent, so no usable 409 reaches Gecko. Create our collection first.
+    if (!etag) {
       this.check(await this.request("MKCOL", this.urls.directory, {}), [201, 405]);
-      r = await this.request("PUT", this.urls.file, headers, body);
     }
+    const r = await this.request("PUT", this.urls.file, headers, body);
     if ([409, 412].includes(r.status)) return false;
     this.check(r, [200, 201, 204]);
     return true;
   }
   private check(r: HttpResponse, accepted: number[]): void {
     if (accepted.includes(r.status)) return;
-    if ([401, 403].includes(r.status)) throw Error("WebDAV sign-in failed. Check the username and password.");
+    if (r.status === 0) throw Error("WebDAV connection failed. Local chats are waiting to sync.");
+    if (r.status === 401) throw Error("WebDAV sign-in failed. Check the username and password.");
+    if (r.status === 403) throw Error("WebDAV denied access to chat storage. Check folder permissions.");
     throw Error(`WebDAV HTTP ${r.status}. Local chats were kept.`);
   }
 }

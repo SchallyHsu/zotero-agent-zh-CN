@@ -5,6 +5,7 @@
 //   &look={"glass":false,"background":"dawn",...}  (an appearance laid over the default)  &image=1 (a saved background picture)
 // `window.__zmc` exposes the host's `sim` and the panel handle to Playwright.
 import { mountPanel } from "../src/ui/index.ts";
+import { mountSettings } from "../src/ui/pane.ts";
 import { FakeHost } from "../src/ui/fake-host.ts";
 import type { DoctorMode } from "../src/ui/fake-host.ts";
 
@@ -25,6 +26,6 @@ if (q.has("image")) host.sim.image = host.sim.pickImage?.dataUrl ?? null; // a p
 if (q.has("look")) void host.setSettings({ appearance: { ...host.getSettings().appearance, ...JSON.parse(q.get("look")!) } });
 const mount = document.getElementById("host") as HTMLElement;
 const shadow = mount.attachShadow({ mode: "open" });
-const panel = mountPanel(shadow, host);
+const panel = q.has("pane") ? mountSettings(shadow, host, () => true) : mountPanel(shadow, host);
 mount.addEventListener("zmc-close", () => { mount.dataset.closed = "1"; });
 (window as unknown as { __zmc: unknown }).__zmc = { host, sim: host.sim, panel, shadow };

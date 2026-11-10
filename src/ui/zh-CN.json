@@ -477,6 +477,7 @@
   "Enter the WebDAV URL first.": "请先填写 WebDAV 地址。",
   "Save the WebDAV password to enable chat sync.": "请先保存 WebDAV 密码以启用聊天同步。",
   "WebDAV sign-in failed. Check the username and password.": "WebDAV 登录失败，请检查用户名和密码。",
+  "WebDAV denied access to chat storage. Check folder permissions.": "WebDAV 拒绝访问聊天存储，请检查目录权限。",
   "WebDAV connection failed. Local chats are waiting to sync.": "无法连接 WebDAV，本地聊天正在等待同步。",
   "WebDAV must provide a strong ETag for safe chat sync.": "WebDAV 服务需支持强 ETag，才能安全合并聊天。",
   "Chat sync is busy on another device. Retrying automatically.": "另一台设备正在同步，稍后自动重试。",

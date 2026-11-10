@@ -1,6 +1,12 @@
 # Modification notice / 修改说明
 
 Modification dates: **2026-11-06 – 2026-11-10**. Maintained and published by **SchallyHsu**.
+Prerelease update: **2026-11-10**, version **0.15.2.15**: initialize the
+WebDAV collection before first upload, refresh standalone settings on sync
+status changes, and distinguish authentication, permissions and network errors.
+Added connection-reset and standalone settings observer regression coverage.
+First upload and repeated sync were verified with an existing Windows WebDAV
+deployment; complete cross-device model continuation still uses isolated tests.
 Prerelease update: **2026-11-10**, version **0.15.2.14**: optional
 WebDAV chat synchronization, conditional writes, stable event identities,
 offline reconciliation, conflict branches and deletion tombstones. Native
