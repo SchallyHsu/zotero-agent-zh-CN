@@ -85,7 +85,7 @@ test("provider-managed backends query their helper even with the legacy API auth
       return { code: 0, stdout: "C:\\bin\\dsh.cmd\r\n", stderr: "" };
     } };
   const runtime = createRuntime({ spawner, bridgeDir: "unused", nodePath: "C:\\bin\\node.exe", accountUsageHelper: async () => "C:\\helpers\\account-usage.mjs" });
-  assert.equal((await runtime.accountUsage!("deepseek-harness", "api-key", "deepseek-official/v4")).status, "available");
+  assert.equal((await runtime.accountUsage!("deepseek-harness", "api-key", '["deepseek-official","deepseek-flash"]')).status, "available");
   assert.equal((await runtime.accountUsage!("pi", "api-key", "anthropic/sonnet")).status, "available");
-  assert.deepEqual(inputs, [{ backend: "deepseek-harness", model: "deepseek-official/v4", cli: "C:\\bin\\dsh.cmd" }, { backend: "pi", model: "anthropic/sonnet" }]);
+  assert.deepEqual(inputs, [{ backend: "deepseek-harness", model: '["deepseek-official","deepseek-flash"]', cli: "C:\\bin\\dsh.cmd" }, { backend: "pi", model: "anthropic/sonnet" }]);
 });

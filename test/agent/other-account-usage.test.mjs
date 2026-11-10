@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { claudeUsage, antigravityUsage, codexOAuthUsage, copilotUsage, googleUsage, deepseekUsage, readOtherAccountUsage } from '../../assets/account-usage.mjs';
+import { claudeUsage, antigravityUsage, codexOAuthUsage, copilotUsage, googleUsage, deepseekUsage, modelRoute, readOtherAccountUsage } from '../../assets/account-usage.mjs';
 
 test('provider formats preserve zero, shared pools, optional windows and exact currency balances', () => {
   const claude = claudeUsage({ five_hour: { utilization: 0, resets_at: '2027-01-01T00:00:00Z' }, seven_day: { utilization: 67.5 }, seven_day_sonnet: { utilization: 10 } });
@@ -90,23 +90,101 @@ test('pi Google and DeepSeek API credentials only reach their corresponding fixe
 test('DSH wallet grant remains bound to its issuer and does not expose stored secrets', async t => {
   const f = await fixture(t);
   const file = await f.write('.dsh/.credentials.yaml', { records: { 'deepseek-account-platform/default': { kind: 'grant', payload: { token: 'SECRET-DSH', issuer: 'https://platform.deepseek.com' } } } });
-  const result = await readOtherAccountUsage({ backend: 'deepseek-harness', model: 'deepseek-official/deepseek-v4-pro' }, { home: f.home, env: {}, yaml: { parse: JSON.parse }, fetch: async (url, init) => {
+  const result = await readOtherAccountUsage({ backend: 'deepseek-harness', model: '["deepseek-account","deepseek-v4-pro"]' }, { home: f.home, env: {}, yaml: { parse: JSON.parse }, fetch: async (url, init) => {
     assert.equal(url, 'https://platform.deepseek.com/api/v0/users/get_user_summary');
     assert.equal(init.headers['x-dsh-auth-token'], 'SECRET-DSH');
     return new Response(JSON.stringify({ code: 0, data: { biz_code: 0, biz_data: { normal_wallets: [{ currency: 'CNY', balance: '12.34' }], bonus_wallets: [{ currency: 'CNY', balance: '0' }] } } }));
   } });
   assert.equal(result.status, 'available');
+  assert.equal(result.billing, 'account');
   assert.equal(result.balances.length, 2);
   assert(!JSON.stringify(result).includes('SECRET'));
   await fs.writeFile(file, JSON.stringify({ records: { 'deepseek-account-platform/default': { kind: 'grant', payload: { token: 'SECRET-DSH', issuer: 'https://unrelated.invalid' } } } }));
-  const denied = await readOtherAccountUsage({ backend: 'deepseek-harness', model: 'deepseek-official/v4' }, { home: f.home, env: {}, yaml: { parse: JSON.parse }, fetch: () => { throw Error('must not send to unrelated host'); } });
+  const denied = await readOtherAccountUsage({ backend: 'deepseek-harness', model: '["deepseek-account","v4"]' }, { home: f.home, env: {}, yaml: { parse: JSON.parse }, fetch: () => { throw Error('must not send to unrelated host'); } });
   assert.equal(denied.status, 'unsupported');
+});
+
+test('DSH ACP selectors pick the API-key or platform-account route by provider', async t => {
+  const f = await fixture(t);
+  await f.write('.dsh/.credentials.yaml', {
+    refs: { DEEPSEEK_API_KEY: 'SECRET-DSH-KEY' },
+    records: {
+      'deepseek-account-platform/default': { kind: 'grant', payload: { token: 'SECRET-DSH', issuer: 'https://platform.deepseek.com' } },
+      'llm-pi-ai/openai-codex': { kind: 'grant', payload: { type: 'oauth', access: 'SECRET-CODEX', accountId: 'account-fixture' } },
+    },
+  });
+  const seen = [];
+  const fetch = async (url, init) => {
+    seen.push(url);
+    if (url === 'https://api.deepseek.com/user/balance') {
+      assert.equal(init.headers.Authorization, 'Bearer SECRET-DSH-KEY');
+      return new Response(JSON.stringify({ is_available: true, balance_infos: [{ currency: 'CNY', total_balance: '15.21' }] }));
+    }
+    if (url === 'https://platform.deepseek.com/api/v0/users/get_user_summary') {
+      assert.equal(init.headers['x-dsh-auth-token'], 'SECRET-DSH');
+      return new Response(JSON.stringify({ code: 0, data: { biz_code: 0, biz_data: { normal_wallets: [{ currency: 'CNY', balance: '9.36' }], bonus_wallets: [{ currency: 'CNY', balance: '5.84' }] } } }));
+    }
+    assert.equal(url, 'https://chatgpt.com/backend-api/wham/usage');
+    assert.equal(init.headers['ChatGPT-Account-Id'], 'account-fixture');
+    return new Response(JSON.stringify({ rate_limit: { primary_window: { used_percent: 10 } } }));
+  };
+  const read = (model) => readOtherAccountUsage({ backend: 'deepseek-harness', model }, { home: f.home, env: {}, yaml: { parse: JSON.parse }, fetch });
+  const api = await read('["deepseek-official","deepseek-flash"]');
+  assert.equal(api.status, 'available');
+  assert.equal(api.billing, 'api-key');
+  assert.deepEqual(api.balances, [{ label: '账户余额', remaining: '15.21', currency: 'CNY' }]);
+  const account = await read('["deepseek-account","deepseek-v4-pro"]');
+  assert.equal(account.billing, 'account');
+  assert.equal(account.balances.length, 2);
+  // A selector saved by an older client keeps working.
+  const legacy = await read('deepseek-official/deepseek-v4-pro');
+  assert.equal(legacy.balances[0].remaining, '15.21');
+  const bare = await read('deepseek-v4-flash');
+  assert.equal(bare.billing, 'account');
+  const thirdParty = await read('["openai-codex","gpt-5"]');
+  assert.equal(thirdParty.status, 'available');
+  assert.deepEqual(seen, [
+    'https://api.deepseek.com/user/balance',
+    'https://platform.deepseek.com/api/v0/users/get_user_summary',
+    'https://api.deepseek.com/user/balance',
+    'https://platform.deepseek.com/api/v0/users/get_user_summary',
+    'https://chatgpt.com/backend-api/wham/usage',
+  ]);
+  assert(!JSON.stringify([api, account, thirdParty]).includes('SECRET'));
+});
+
+test('DSH selectors explain missing keys and reject unknown routes without network access', async t => {
+  const f = await fixture(t);
+  await f.write('.dsh/.credentials.yaml', { records: { 'deepseek-account-platform/default': { kind: 'grant', payload: { token: 'SECRET-DSH', issuer: 'https://platform.deepseek.com' } } } });
+  let calls = 0, env = {};
+  const read = (model) => readOtherAccountUsage({ backend: 'deepseek-harness', model }, { home: f.home, env, yaml: { parse: JSON.parse }, fetch: async (url, init) => {
+    calls++;
+    assert.equal(url, 'https://api.deepseek.com/user/balance');
+    assert.equal(init.headers.Authorization, 'Bearer SECRET-ENV-KEY');
+    return new Response(JSON.stringify({ balance_infos: [{ currency: 'CNY', total_balance: '1.00' }] }));
+  } });
+  const missing = await read('["deepseek-official","deepseek-flash"]');
+  assert.equal(missing.status, 'api-key');
+  assert.match(missing.message, /API 密钥/);
+  assert.equal((await read('["custom-gateway","model"]')).status, 'unavailable');
+  assert.equal((await read('mystery-route')).status, 'unsupported');
+  env = { DEEPSEEK_API_KEY: 'SECRET-ENV-KEY' };
+  assert.equal((await read('["deepseek-official","v4"]')).status, 'available');
+  assert.equal(calls, 1);
+});
+
+test('ACP model selectors parse JSON pairs, provider/model strings and bare ids', () => {
+  assert.deepEqual(modelRoute('["deepseek-official","deepseek-flash"]'), { provider: 'deepseek-official', model: 'deepseek-flash' });
+  assert.deepEqual(modelRoute('openrouter/moonshotai/kimi-k2.6'), { provider: 'openrouter', model: 'moonshotai/kimi-k2.6' });
+  assert.deepEqual(modelRoute('deepseek-v4-pro'), { model: 'deepseek-v4-pro' });
+  assert.deepEqual(modelRoute(''), {});
+  assert.deepEqual(modelRoute(undefined), {});
 });
 
 test('DSH third-party and Copilot route their own credentials; expired and throttled states are explicit', async t => {
   const f = await fixture(t);
   await f.write('.dsh/.credentials.yaml', { records: { 'llm-pi-ai/openai-codex': { kind: 'grant', payload: { type: 'oauth', access: 'SECRET-CODEX', accountId: 'account-fixture' } } } });
-  const result = await readOtherAccountUsage({ backend: 'deepseek-harness', model: 'openai-codex/gpt-5' }, { home: f.home, env: {}, yaml: { parse: JSON.parse }, fetch: async (url, init) => {
+  const result = await readOtherAccountUsage({ backend: 'deepseek-harness', model: '["openai-codex","gpt-5"]' }, { home: f.home, env: {}, yaml: { parse: JSON.parse }, fetch: async (url, init) => {
     assert.equal(url, 'https://chatgpt.com/backend-api/wham/usage');
     assert.equal(init.headers['ChatGPT-Account-Id'], 'account-fixture');
     return new Response(JSON.stringify({ rate_limit: { primary_window: { used_percent: 10 } } }));

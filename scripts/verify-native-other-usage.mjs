@@ -8,9 +8,11 @@ const env = { ...process.env, PATH: process.env.PATH || process.env.Path };
 const spawner = { ...createNodeSpawner({ baseEnv: env }), windows: process.platform === 'win32' };
 const cli = await findBinary(spawner, env, 'dsh');
 const accounts = [];
+// dsh ACP reports opaque ["provider","model"] selectors; override with ZMC_DSH_USAGE_MODEL for another route.
+const dshModel = process.env.ZMC_DSH_USAGE_MODEL || '["deepseek-official","deepseek-flash"]';
 for (const backend of ['claude-code', 'antigravity', 'deepseek-harness', 'pi']) {
-  const result = await readOtherAccountUsage({ backend, cli, model: backend === 'deepseek-harness' ? 'deepseek-official/deepseek-v4-pro' : process.env.ZMC_PI_USAGE_MODEL });
-  accounts.push({ backend, status: result.status, windows: result.windows.length, balances: result.balances?.length ?? 0,
+  const result = await readOtherAccountUsage({ backend, cli, model: backend === 'deepseek-harness' ? dshModel : process.env.ZMC_PI_USAGE_MODEL });
+  accounts.push({ backend, status: result.status, billing: result.billing, windows: result.windows.length, balances: result.balances?.length ?? 0,
     hasResetTime: result.windows.some(w => w.resetsAt !== undefined), ...(result.message ? { message: result.message } : {}) });
 }
 const report = { completed: true, noModelInference: true, accounts };

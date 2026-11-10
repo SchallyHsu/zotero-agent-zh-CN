@@ -159,6 +159,61 @@ async function dshCredentials(cli, options) {
   return object(yaml.parse(source));
 }
 
+/**
+ * ACP model selectors: dsh sends an opaque JSON pair (`["provider","model"]`, 0.2.2+),
+ * pi sends `provider/model`, and older clients send a bare model id.
+ */
+export function modelRoute(value) {
+  if (typeof value !== 'string') return {};
+  const text = value.trim();
+  if (!text) return {};
+  if (text.startsWith('[')) {
+    try {
+      const pair = JSON.parse(text);
+      if (Array.isArray(pair) && pair.length === 2 && pair.every(x => typeof x === 'string' && x))
+        return { provider: pair[0], model: pair[1] };
+    } catch {}
+  }
+  const slash = text.indexOf('/');
+  return slash > 0 ? { provider: text.slice(0, slash), model: text.slice(slash + 1) } : { model: text };
+}
+
+/** dsh stores the signed-in account grant under its platform scope, independent of model routes. */
+function dshAccountGrant(records) {
+  const direct = object(records['deepseek-account-platform/default']);
+  if (direct.kind === 'grant') return direct;
+  for (const [key, record] of Object.entries(records)) if (record?.kind === 'grant' && /^deepseek-account(?:-platform)?\//.test(key)) return record;
+  return undefined;
+}
+
+/** `deepseek-account` asks the DeepSeek platform for the signed-in wallet balances. */
+async function deepseekAccountBalance(records, options) {
+  const grant = object(dshAccountGrant(records)?.payload);
+  if (typeof grant.token !== 'string' || !grant.token) return unknown('未找到 DeepSeek Harness 账号登录，请先在 dsh 中登录。');
+  // Match the grant to its issuer; custom hosts are never sent credentials.
+  const issuer = typeof grant.issuer === 'string' ? grant.issuer.replace(/\/+$/, '') : '';
+  if (issuer !== 'https://platform.deepseek.com') return unknown('当前 DeepSeek 账号来源暂不支持余额查询。', 'unsupported');
+  const response = await request('https://platform.deepseek.com/api/v0/users/get_user_summary', { headers: { 'x-dsh-auth-token': grant.token, 'x-client-platform': 'web', 'x-client-version': '0.2.2', 'x-client-locale': 'zh_CN' } }, options);
+  if (response.code !== 0 || response.data?.biz_code !== 0) throw Error('provider-response');
+  return deepseekUsage(response.data.biz_data, true);
+}
+
+/** A stored secret is used as-is; `$NAME` and a plain name resolve from the launch environment, never executed. */
+function credentialValue(reference, env) {
+  if (typeof reference !== 'string' || !reference || reference.startsWith('!')) return undefined;
+  if (reference.startsWith('$')) return env[reference.slice(1)] || undefined;
+  return env[reference] || reference;
+}
+
+/** `deepseek-official` (and the legacy pi route named `deepseek`) bills the stored API key. */
+async function deepseekApiKeyBalance(refs, options) {
+  const env = options.env ?? process.env;
+  const stored = object(refs).DEEPSEEK_API_KEY;
+  const key = credentialValue(stored, env) ?? credentialValue(env.DEEPSEEK_API_KEY, env);
+  if (!key) return unknown('未找到 DeepSeek API 密钥，请在 dsh 中配置 DEEPSEEK_API_KEY 后重试。', 'api-key');
+  return deepseekUsage(await request('https://api.deepseek.com/user/balance', { headers: { Authorization: `Bearer ${key}` } }, options));
+}
+
 async function providerUsage(provider, credential, options) {
   if (!credential && provider === 'deepseek' && (options.env ?? process.env).DEEPSEEK_API_KEY) credential = { type: 'api_key', key: (options.env ?? process.env).DEEPSEEK_API_KEY };
   if (!credential) return unknown(`未找到 ${provider} 的登录，请先在当前后端登录此服务商。`);
@@ -211,22 +266,25 @@ export async function readOtherAccountUsage(input, options = {}) {
       return await providerUsage(provider, auth[provider], options);
     }
     if (input.backend === 'deepseek-harness') {
-      if (!input.model) return unknown('请选择具体的 dsh 模型后查看对应账号额度。');
-      const data = await dshCredentials(input.cli, options), records = object(data.records);
-      const provider = input.model?.includes('/') ? input.model.split('/')[0] : undefined;
-      if (provider && provider !== 'deepseek-official') {
-        const r = object(records[`llm-pi-ai/${provider}`]);
-        const key = provider === 'deepseek' ? object(data.refs).DEEPSEEK_API_KEY : undefined;
-        return await providerUsage(provider, r.kind === 'grant' ? r.payload : r.kind === 'api-key' ? { type: 'api_key', key: r.key } : key ? { type: 'api_key', key } : undefined, options);
+      const route = modelRoute(input.model);
+      if (!route.model) return unknown('请选择具体的 dsh 模型后查看对应账号额度。');
+      const data = await dshCredentials(input.cli, options), records = object(data.records), refs = object(data.refs);
+      // dsh registers one route per credential source; the ACP selector names it exactly.
+      if (route.provider === 'deepseek-account') return await deepseekAccountBalance(records, options);
+      if (route.provider === 'deepseek-official') return await deepseekApiKeyBalance(refs, options);
+      if (route.provider === 'deepseek') {
+        const r = object(records['llm-pi-ai/deepseek']);
+        return r.kind === 'grant' ? await providerUsage('deepseek', r.payload, options)
+          : r.kind === 'api-key' ? await providerUsage('deepseek', { type: 'api_key', key: r.key }, options)
+          : await deepseekApiKeyBalance(refs, options);
       }
-      if (!provider && !/^deepseek[-/]/i.test(input.model)) return unknown('当前 dsh 模型路由无法确定账号，请选择具体服务商模型后重试。', 'unsupported');
-      const record = object(records['deepseek-account-platform/default']), grant = object(record.payload);
-      if (record.kind !== 'grant' || typeof grant.token !== 'string') return unknown('未找到 DeepSeek Harness 账号登录，请先在 dsh 中登录。');
-      // Match the grant to its issuer; custom hosts are never sent credentials.
-      if (grant.issuer !== 'https://platform.deepseek.com' && grant.issuer !== 'https://platform.deepseek.com/') return unknown('当前 DeepSeek 账号来源暂不支持余额查询。', 'unsupported');
-      const response = await request('https://platform.deepseek.com/api/v0/users/get_user_summary', { headers: { 'x-dsh-auth-token': grant.token, 'x-client-platform': 'web', 'x-client-version': '0.2.2', 'x-client-locale': 'zh_CN' } }, options);
-      if (response.code !== 0 || response.data?.biz_code !== 0) throw Error('provider-response');
-      return deepseekUsage(response.data.biz_data, true);
+      if (route.provider) {
+        const r = object(records[`llm-pi-ai/${route.provider}`]);
+        return await providerUsage(route.provider, r.kind === 'grant' ? r.payload : r.kind === 'api-key' ? { type: 'api_key', key: r.key } : undefined, options);
+      }
+      if (!/^deepseek[-/]/i.test(route.model)) return unknown('当前 dsh 模型路由无法确定账号，请选择具体服务商模型后重试。', 'unsupported');
+      // Older clients saved bare DeepSeek model ids; the platform account is the closest match.
+      return dshAccountGrant(records) ? await deepseekAccountBalance(records, options) : await deepseekApiKeyBalance(refs, options);
     }
     return unknown('此后端暂不支持账号额度查询。', 'unsupported');
   } catch (e) {

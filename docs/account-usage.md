@@ -1,4 +1,4 @@
-# 额度与用量（0.15.2.11）
+# 额度与用量（0.15.2.13）
 
 输入框底部工具栏右侧的“额度与用量”环形仪表图标实时显示最紧迫额度窗口的剩余比例，悬停显示胶囊摘要提示（如 `5小时 · 剩余 73%`），点击展开详情弹窗。它与旁边的上下文圆环分别表示账号配额和当前对话的上下文占用。
 
@@ -7,8 +7,8 @@
 | Codex 订阅 | 真实额度窗口的剩余百分比、套餐（后端提供时）、重置时间 |
 | Claude Code 订阅 | 5 小时、7 天，以及服务端提供的 Sonnet／Opus 等独立额度和重置时间 |
 | Antigravity 账号 | 本地原生服务返回的模型额度组及各窗口；旧服务退回逐模型额度 |
-| DeepSeek Harness 原生账号 | 当前账号的充值余额、赠送余额及原币种，保留精确的小数字符串 |
-| pi / dsh 的第三方模型 | 按当前模型服务商匹配本后端自己的凭据：Claude、ChatGPT/Codex、GitHub Copilot、Gemini CLI、Google Antigravity；DeepSeek API 可显示账户余额 |
+| DeepSeek Harness 平台账号（`deepseek-account`） | 当前账号的充值余额、赠送余额及原币种，保留精确的小数字符串 |
+| pi / dsh 的第三方模型 | 按当前模型服务商匹配本后端自己的凭据：Claude、ChatGPT/Codex、GitHub Copilot、Gemini CLI、Google Antigravity；DeepSeek API 密钥及 dsh 的 `deepseek-official` 路由可显示账户余额 |
 | 其他 API 密钥 | 已报告的 Token；开启“显示词元与费用”后显示后端估算费用。未提供查询接口的账户额度到服务商控制台查看 |
 
 显示的额度属于账号，包含其他客户端的使用。窗口名称按服务端返回的时长生成，并不固定假设 5 小时／7 天；多额度桶分别展示。百分比不转换成可用对话次数，Token 不转换成订阅额度，订阅模式不展示 API 美元估算。
@@ -19,7 +19,7 @@
 
 Codex 使用 [官方 app-server 文档](https://developers.openai.com/codex/app-server#6-rate-limits-chatgpt) 的 `initialize` → `initialized` → `account/rateLimits/read`，复用本机 Codex 的登录和可执行文件设置，兼容 `rateLimits` 及 `rateLimitsByLimitId`。`resetsAt` 从 Unix 秒转换为毫秒后按本地时区显示。
 
-其他后端通过单独的 Node 辅助进程查询：Claude 复用 `CLAUDE_CONFIG_DIR/.credentials.json` 或默认目录、macOS 默认登录的钥匙串；pi 使用 `PI_CODING_AGENT_DIR/auth.json`（默认 `~/.pi/agent`）；dsh 使用 `DSH_HOME/.credentials.yaml`（默认 `~/.dsh`），并复用已安装 dsh 的 YAML 解析库。辅助进程仅在内存中读取当前服务商凭据，不改写凭据、不自行刷新令牌、不执行凭据配置中的 shell 命令；输出仅含标准化额度，凭据不会传入 UI、聊天记录或查询日志。登录过期时提示在原客户端刷新登录。
+其他后端通过单独的 Node 辅助进程查询：Claude 复用 `CLAUDE_CONFIG_DIR/.credentials.json` 或默认目录、macOS 默认登录的钥匙串；pi 使用 `PI_CODING_AGENT_DIR/auth.json`（默认 `~/.pi/agent`）；dsh 使用 `DSH_HOME/.credentials.yaml`（默认 `~/.dsh`），并复用已安装 dsh 的 YAML 解析库。dsh 0.2.2 的 ACP 模型值是 `["provider","model"]` JSON 选择器（例如 `["deepseek-official","deepseek-flash"]`）：`deepseek-account` 读取 `deepseek-account-platform/default` grant 查询平台充值／赠送余额；`deepseek-official` 及旧的 `deepseek` 路由读取 `refs.DEEPSEEK_API_KEY` 或环境变量查询 API 余额；其他路由读取 `llm-pi-ai/<provider>` 记录。旧的 `provider/model` 字符串与裸模型 id 仍可识别。辅助进程仅在内存中读取当前服务商凭据，不改写凭据、不自行刷新令牌、不执行凭据配置中的 shell 命令；输出仅含标准化额度，凭据不会传入 UI、聊天记录或查询日志。登录过期时提示在原客户端刷新登录。
 
 Antigravity 复用原生本地服务 `RetrieveUserQuotaSummary` 和 `GetUserStatus`；无运行中的服务时沿用已有的短期原生服务启动方式。Claude 和部分 pi／dsh 服务商使用当前客户端兼容接口，它们并非稳定的公共额度 API，服务商升级可能导致暂不可用。对应接口失败、缺少登录或不支持的模型路由会明确提示，不跨后端借用别的账号数据，也不从历史日志猜测余额。自定义 DSH 平台域名、GitHub Enterprise、无法确认的模型路由及其他未列出的服务商暂不查询。
 
@@ -38,3 +38,5 @@ Antigravity 复用原生本地服务 `RetrieveUserQuotaSummary` 和 `GetUserStat
 `npm run test:native-other-usage` 记录其他本机账号的可用性；通过 `ZMC_PI_USAGE_MODEL` 可指定 pi 当前模型。仅输出状态、额度窗口／余额数量及是否存在重置时间，不输出具体额度或凭据。
 
 2026-11-07 本机验证：完整 `npm test` 通过。真实已登录 Codex 返回两个额度窗口；Antigravity 返回五个有效窗口及重置时间；DeepSeek Harness 返回两项原生账户余额。Claude 本机令牌已过期，实际验证了过期提示，其成功响应使用合成测试；pi 没有已配置账号，按服务商分流、请求和响应使用合成测试，未宣称已验证真实账号。所有检查均不提交模型推理。发布检查没有替换日常使用的 Zotero 安装。
+
+2026-11-10 修复 dsh 额度：用本机 dsh 0.2.2-rc.1 的真实只读凭据分别查询 `deepseek-official` 与 `deepseek-account` 两条路由，均返回余额（前者一项账户余额，后者充值／赠送各一项）；ACP 选择器解析、`provider/model` 旧格式兼容、未知路由不发起网络请求均有回归测试，完整 `npm test` 通过。未替换日常 Zotero 安装进行界面实测。
