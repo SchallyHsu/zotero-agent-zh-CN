@@ -1,8 +1,8 @@
-# 聊天同步 / Chat sync — 0.15.2.15 预发布测试版
+# 聊天同步 / Chat sync — 0.15.2.15 正式版
 
 ## 使用
 
-1. 各台电脑安装 [Release](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.15) 中的 `zotero-agent-zh-CN-0.15.2.15.xpi`，并各自完成模型后端登录。这是预发布测试版。
+1. 各台电脑安装 [Release](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.15) 中的 `zotero-agent-zh-CN-0.15.2.15.xpi`，并各自完成模型后端登录。
 2. 打开插件“设置 → 聊天同步”，填写同一个 WebDAV **现有目录**地址、用户名和密码，打开“跨设备同步聊天”，点击“保存并同步”。Zotero 账号中已有的附件同步设置不会自动启用聊天同步。
 3. 在另一台电脑填写相同配置。出现“聊天已同步”后，从历史打开同一段聊天接着聊。也可以点击“立即同步”。
 
@@ -55,4 +55,4 @@ Install the accompanying XPI on each desktop. Open **Settings → Chat sync**, e
 
 Chats use `zotero-agent-chat/v1.json` under the configured folder. Strong ETags and conditional writes are required. Native model sessions and credentials remain local. Remote additions rebuild model context in the same plugin chat. Concurrent offline continuations become complete `[fork]` branches; deletion tombstones prevent resurrection. PDFs sync separately through Zotero. Historical pasted images are not restored. Long context is bounded with a full local transcript file available to the model.
 
-Validation uses synthetic data, two isolated stores, loopback WebDAV, browser tests and an isolated real Zotero/XPI. Version 0.15.2.15 also verified initial upload and repeated synchronization with an existing Windows/WebDAV deployment, without real model inference. Complete cross-device continuation still needs multi-device validation. This build is distributed as a prerelease for testing.
+Validation uses synthetic data, two isolated stores, loopback WebDAV, browser tests and an isolated real Zotero/XPI. Version 0.15.2.15 also verified initial upload and repeated synchronization with an existing Windows/WebDAV deployment, without real model inference. Complete cross-device continuation still needs multi-device validation. Version 0.15.2.15 was promoted to a stable release on 2026-11-14 using the same validated XPI and source archive.

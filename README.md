@@ -2,21 +2,21 @@
 
 **简体中文** | [English](README.en.md)
 
-**0.15.2.15 预发布修复版** 修复首次聊天同步时专用目录尚未创建导致连接中断，以及 Zotero 独立设置窗口一直显示“正在同步聊天”的问题。[下载修复版](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.15)。已在现有 Windows/WebDAV 环境验证首次上传和重复同步，完整跨设备续聊仍需多设备验证。
+**0.15.2.15 正式版** 提供 **WebDAV 聊天双向同步与跨设备续聊**，并修复首次聊天同步时专用目录尚未创建导致连接中断，以及 Zotero 独立设置窗口一直显示“正在同步聊天”的问题。[下载正式版安装包与源码](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.15)。已在现有 Windows/WebDAV 环境验证首次上传和重复同步，完整跨设备续聊仍需多设备验证。
 
-**0.15.2.14 预发布测试版** 增加 **WebDAV 聊天双向同步与跨设备续聊**：各设备共享同一段聊天的历史，收到新消息后用最新上下文接续本机后端；离线补传，并发内容保留分支。[下载测试版安装包与源码](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.14)。设置方式、同步范围及验证边界见 [聊天同步说明](docs/chat-sync.md)。实际两台电脑和具体 WebDAV 服务仍需配置后验证。
+各设备共享同一段聊天的历史，收到新消息后用最新上下文接续本机后端；离线补传，并发内容保留分支。聊天同步默认关闭，设置方式、同步范围及验证边界见 [聊天同步说明](docs/chat-sync.md)。
 
 **0.15.2.13** 修复 **DeepSeek Harness 的“额度与用量”**：dsh 0.2.2 的 ACP 模型值是 `["provider","model"]` 形式的 JSON 选择器，插件现在按 `deepseek-account`（平台账号充值／赠送余额）、`deepseek-official`（API 密钥余额）等实际路由查询，不再提示“无法确定账号”。同时保留 0.15.2.12 的**选区原文与页码**：点击原文即可返回 PDF 对应选区并**临时高亮**，恢复历史对话后也能继续定位。继续支持**中文／English 实时切换**、额度与用量仪表，以及 Codex、Claude Code、Antigravity、DeepSeek Harness 和 pi。完整改动见 [更新记录](CHANGELOG.md)，额度功能与验证边界见 [额度与用量说明](docs/account-usage.md)。
 
 基于 [54yyyu/zotero-mcp](https://github.com/54yyyu/zotero-mcp) 的 Zotero Agent 插件制作的**非官方简体中文衍生版**。本仓库增加界面汉化、项目与文章对话管理、后端适配和性能优化；原插件的模型接入、文献读取、对话、工具调用等核心功能来自原项目及其贡献者。
 
-**上游版本：** [v0.15.2](https://github.com/54yyyu/zotero-mcp/tree/v0.15.2/plugin) · **上游提交：** [`dfec70c8b772e697476e0b42c1264441cf518686`](https://github.com/54yyyu/zotero-mcp/commit/dfec70c8b772e697476e0b42c1264441cf518686) · **当前测试版：** `0.15.2.15` · **正式版：** `0.15.2.13`
+**上游版本：** [v0.15.2](https://github.com/54yyyu/zotero-mcp/tree/v0.15.2/plugin) · **上游提交：** [`dfec70c8b772e697476e0b42c1264441cf518686`](https://github.com/54yyyu/zotero-mcp/commit/dfec70c8b772e697476e0b42c1264441cf518686) · **正式版：** `0.15.2.15`
 
 本项目不是 Zotero 或 Zotero MCP 官方发布，不代表原作者背书。请先了解原项目，并将通用功能问题与本仓库的汉化问题区分开。
 
 ## 下载与安装
 
-1. 从 [Releases](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.13) 下载 `zotero-agent-zh-CN-0.15.2.13.xpi`，校验文件为 `SHA256SUMS.txt`。
+1. 从 [Releases](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.15) 下载 `zotero-agent-zh-CN-0.15.2.15.xpi`，校验文件为 `SHA256SUMS.txt`。
 2. 打开 Zotero → **工具 → 插件**，点击齿轮，选择“从文件安装插件”，选取 `.xpi`；按提示重新启动 Zotero。
 3. 从工具栏“文献助手”按钮打开侧栏，完成原插件要求的 `zotero-cli` 和模型后端配置。详细要求见 [上游插件文档](https://github.com/54yyyu/zotero-mcp/blob/v0.15.2/docs/chat-plugin.md)。
 
@@ -90,7 +90,7 @@ npm run typecheck
 npm run build
 ```
 
-生成的安装包为 `dist/zotero-agent.xpi`。完整源码、构建脚本、锁文件、许可证与来源说明均在本仓库中；下载对应的 `zh-CN-v0.15.2.13` 源码标签或 Release 附带的完整源码包可获得该发布版的源码。
+生成的安装包为 `dist/zotero-agent.xpi`。完整源码、构建脚本、锁文件、许可证与来源说明均在本仓库中；下载对应的 `zh-CN-v0.15.2.15` 源码标签或 Release 附带的完整源码包可获得该发布版的源码。
 
 ## 验证与开发预览
 

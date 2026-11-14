@@ -2,21 +2,21 @@
 
 [简体中文](README.md) | **English**
 
-**Prerelease fix 0.15.2.15** creates the chat collection before the first WebDAV upload and updates standalone Zotero settings when sync succeeds or fails. [Download the fix](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.15). Initial upload and repeated sync were verified with an existing Windows/WebDAV deployment; complete cross-device continuation still needs multi-device validation.
+**Stable release 0.15.2.15** adds **bidirectional WebDAV chat sync and cross-device continuation**, creates the chat collection before the first WebDAV upload and updates standalone Zotero settings when sync succeeds or fails. [Download the stable XPI and source archive](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.15). Initial upload and repeated sync were verified with an existing Windows/WebDAV deployment; complete cross-device continuation still needs multi-device validation.
 
-**Prerelease 0.15.2.14** adds **bidirectional WebDAV chat sync and cross-device continuation**. Devices share one conversation transcript, rebuild local model context after remote replies, upload offline changes and preserve concurrent branches. [Download the test XPI and source archive](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.14). See [Chat sync](docs/chat-sync.md) for setup and validation. Actual two-computer use and your WebDAV provider still need validation after configuration.
+Devices share one conversation transcript, rebuild local model context after remote replies, upload offline changes and preserve concurrent branches. Chat sync is off by default. See [Chat sync](docs/chat-sync.md) for setup, scope and validation.
 
 **0.15.2.13** fixes the **DeepSeek Harness quota panel**: dsh 0.2.2 reports ACP model values as `["provider","model"]` JSON selectors, so the plugin now queries the route actually selected — `deepseek-account` (platform recharge / bonus wallets) or `deepseek-official` (API-key balance) — instead of reporting "cannot determine the account". The **selected source text and page numbers** from 0.15.2.12 remain: click a passage to return to its exact PDF position and **temporarily highlight it**, including after restoring a saved chat. Live **Chinese / English switching**, quota gauges, and Codex, Claude Code, Antigravity, DeepSeek Harness and pi support remain available. See the [Changelog](CHANGELOG.md) and [Account Quota & Usage](docs/account-usage.md).
 
 An **unofficial derivative** of the Zotero Agent plugin from [54yyyu/zotero-mcp](https://github.com/54yyyu/zotero-mcp). This repository adds bilingual UI support (Simplified Chinese & English), project and per-paper conversation management, native backend integrations (Antigravity CLI & DeepSeek Harness), account quota & usage gauges, and localization performance optimizations. Core agent sessions, library access, chat, and tool calls come from the upstream project and its contributors.
 
-**Upstream release:** [v0.15.2](https://github.com/54yyyu/zotero-mcp/tree/v0.15.2/plugin) · **Upstream commit:** [`dfec70c8b772e697476e0b42c1264441cf518686`](https://github.com/54yyyu/zotero-mcp/commit/dfec70c8b772e697476e0b42c1264441cf518686) · **Current prerelease:** `0.15.2.15` · **Stable:** `0.15.2.13`
+**Upstream release:** [v0.15.2](https://github.com/54yyyu/zotero-mcp/tree/v0.15.2/plugin) · **Upstream commit:** [`dfec70c8b772e697476e0b42c1264441cf518686`](https://github.com/54yyyu/zotero-mcp/commit/dfec70c8b772e697476e0b42c1264441cf518686) · **Stable:** `0.15.2.15`
 
 This project is not an official Zotero or Zotero MCP release and does not imply endorsement by the original author.
 
 ## Download & Installation
 
-1. Download `zotero-agent-zh-CN-0.15.2.13.xpi` from [Releases](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.13) (checksums in `SHA256SUMS.txt`).
+1. Download `zotero-agent-zh-CN-0.15.2.15.xpi` from [Releases](https://github.com/SchallyHsu/zotero-agent-zh-CN/releases/tag/zh-CN-v0.15.2.15) (checksums in `SHA256SUMS.txt`).
 2. In Zotero, open **Tools → Plugins**, click the gear icon, choose **Install Plugin From File…**, select the `.xpi` file, and restart Zotero if prompted.
 3. Open the side panel from the toolbar button and complete the `zotero-cli` and backend setup as described in the [upstream plugin documentation](https://github.com/54yyyu/zotero-mcp/blob/v0.15.2/docs/chat-plugin.md).
 4. To switch the interface language between **Chinese (`中文`)** and **English**, open **Settings (gear icon) → Appearance → Language**.
@@ -70,7 +70,7 @@ npm run typecheck
 npm run build
 ```
 
-The installable add-on is written to `dist/zotero-agent.xpi`. The exact source for this release is available under tag `zh-CN-v0.15.2.13` and in the source ZIP attached to its GitHub Release.
+The installable add-on is written to `dist/zotero-agent.xpi`. The exact source for this release is available under tag `zh-CN-v0.15.2.15` and in the source ZIP attached to its GitHub Release.
 
 ## Verification & Development Preview
 
